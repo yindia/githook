@@ -56,7 +56,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"created": event.Created,
 			"deleted": event.Deleted,
 			"forced":  event.Forced,
-			"size":    event.Size,
+			"size":    len(event.Commits),
 		}
 		h.emit(r, internal.Event{Provider: "github", Name: "push", Data: data})
 	default:
