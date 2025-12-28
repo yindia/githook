@@ -13,12 +13,45 @@ Config-driven webhook router for GitHub (with GitLab/Bitbucket planned). It norm
 ## Architecture
 Webhook Provider -> go-playground/webhooks -> Adapter -> Normalized Event -> Rule Engine -> Watermill Publisher
 
-## Quickstart (One-Click Local)
-Start RabbitMQ via Docker Compose, configure AMQP in `app.yaml`, and run the server:
+## Quickstart (Docker Compose)
+One command builds and runs the agent on port 8080 with all local drivers:
 ```bash
-export GITHUB_WEBHOOK_SECRET=devsecret
-docker-compose up -d
-cat > app.yaml <<'YAML'
+GITHUB_WEBHOOK_SECRET=devsecret docker-compose up --build
+```
+
+Then send GitHub webhooks to:
+`http://localhost:8080/webhooks/github`
+
+Useful endpoints:
+- RabbitMQ UI: http://localhost:15672 (guest/guest)
+- NATS Streaming: nats://localhost:4222 (cluster id: test-cluster)
+- Kafka: localhost:9092
+- Postgres: postgres://githooks:githooks@localhost:5432/githooks?sslmode=disable
+- MySQL: githooks:githooks@tcp(localhost:3306)/githooks
+
+## Provider Configs
+GitHub (enabled by default):
+```yaml
+providers:
+  github:
+    enabled: true
+    path: /webhooks/github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+```
+
+GitLab / Bitbucket (planned):
+```yaml
+providers:
+  gitlab:
+    enabled: false
+  bitbucket:
+    enabled: false
+```
+
+Docker Compose uses `app.docker.yaml` to connect to RabbitMQ, NATS Streaming, Kafka, HTTP, and Postgres.
+
+Example `app.yaml` (GitHub + AMQP):
+```yaml
 server:
   port: 8080
 
@@ -33,25 +66,7 @@ watermill:
   amqp:
     url: amqp://guest:guest@localhost:5672/
     mode: durable_queue
-YAML
-go run main.go
 ```
-
-Then send GitHub webhooks to:
-`http://localhost:8080/webhooks/github`
-
-## Local Dependencies (Docker Compose)
-Spin up local brokers and databases:
-```bash
-docker-compose up -d
-```
-
-Useful endpoints:
-- RabbitMQ UI: http://localhost:15672 (guest/guest)
-- NATS Streaming: nats://localhost:4222 (cluster id: test-cluster)
-- Kafka: localhost:9092
-- Postgres: postgres://githooks:githooks@localhost:5432/githooks?sslmode=disable
-- MySQL: githooks:githooks@tcp(localhost:3306)/githooks
 
 ## Driver Configs for Docker Compose
 Use these `app.yaml` snippets with the services from `docker-compose.yaml`.
@@ -106,12 +121,6 @@ watermill:
 ```
 
 ## Testing with a Local Publisher
-Start the server:
-```bash
-export GITHUB_WEBHOOK_SECRET=devsecret
-go run main.go
-```
-
 Send a test webhook (pull request opened):
 ```bash
 body='{"action":"opened","pull_request":{"draft":false,"merged":false,"base":{"ref":"main"},"head":{"ref":"feature"}}}'

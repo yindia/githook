@@ -1,0 +1,28 @@
+server:
+  port: 8080
+
+providers:
+  github:
+    enabled: true
+    path: /webhooks/github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+
+watermill:
+  drivers: [amqp, nats, kafka, http, sql]
+  amqp:
+    url: amqp://guest:guest@rabbitmq:5672/
+    mode: durable_queue
+  nats:
+    cluster_id: test-cluster
+    client_id: githooks
+    url: nats://nats-streaming:4222
+  kafka:
+    brokers: ["kafka:9092"]
+  http:
+    mode: base_url
+    base_url: http://http-sink:8081/hooks
+  sql:
+    driver: postgres
+    dsn: postgres://githooks:githooks@postgres:5432/githooks?sslmode=disable
+    dialect: postgres
+    auto_initialize_schema: true
