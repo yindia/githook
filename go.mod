@@ -6,6 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/ThreeDotsLabs/watermill v1.3.7
 	github.com/ThreeDotsLabs/watermill-amqp v1.1.4
+	github.com/ThreeDotsLabs/watermill-http/v2 v2.3.1
 	github.com/ThreeDotsLabs/watermill-kafka v1.0.1
 	github.com/ThreeDotsLabs/watermill-nats v1.0.7
 	github.com/ThreeDotsLabs/watermill-sql v1.4.0
@@ -17,12 +18,14 @@ require (
 require (
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/Shopify/sarama v1.23.1 // indirect
-	github.com/ThreeDotsLabs/watermill-http/v2 v2.3.1 // indirect
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/go-chi/chi v4.1.2+incompatible // indirect
+	github.com/go-chi/render v1.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
