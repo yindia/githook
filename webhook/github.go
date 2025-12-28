@@ -33,6 +33,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		github.PushEvent,
 	)
 	if err != nil {
+		log.Printf("github parse failed: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -71,6 +72,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *GitHubHandler) emit(r *http.Request, event internal.Event) {
 	topics := h.rules.Evaluate(event)
+	log.Printf("event provider=%s name=%s topics=%v", event.Provider, event.Name, topics)
 	for _, topic := range topics {
 		if err := h.publisher.Publish(r.Context(), topic, event); err != nil {
 			log.Printf("publish %s failed: %v", topic, err)

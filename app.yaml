@@ -8,4 +8,7 @@ providers:
     secret: ${GITHUB_WEBHOOK_SECRET}
 
 watermill:
-  driver: gochannel
+  driver: amqp
+  amqp:
+    url: amqp://guest:guest@localhost:5672/
+    mode: durable_queue
