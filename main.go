@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -15,7 +16,10 @@ import (
 )
 
 func main() {
-	config, err := internal.LoadConfig("app.yaml")
+	configPath := flag.String("config", "config.yaml", "Path to config file")
+	flag.Parse()
+
+	config, err := internal.LoadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
