@@ -167,3 +167,15 @@ watermill:
     mode: base_url
     base_url: http://another-service:8080/webhooks
 ```
+
+## Publish Failure Handling
+
+Configure retry and optional DLQ routing:
+
+```yaml
+watermill:
+  publish_retry:
+    attempts: 3
+    delay_ms: 500
+  dlq_driver: amqp
+```

@@ -157,6 +157,10 @@ func (w *Worker) handleMessage(ctx context.Context, topic string, msg *message.M
 		evt.Client = client
 	}
 
+	if reqID := evt.Metadata["request_id"]; reqID != "" {
+		w.logger.Printf("request_id=%s topic=%s provider=%s type=%s", reqID, evt.Topic, evt.Provider, evt.Type)
+	}
+
 	w.notifyMessageStart(ctx, evt)
 
 	handler := w.topicHandlers[topic]

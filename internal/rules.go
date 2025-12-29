@@ -70,21 +70,32 @@ func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
 
 // Evaluate runs an event through the rule engine and returns a list of topics to publish to.
 func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
+	return r.evaluateWithLogger(event, r.logger)
+}
+
+func (r *RuleEngine) EvaluateWithLogger(event Event, logger *log.Logger) []RuleMatch {
+	return r.evaluateWithLogger(event, logger)
+}
+
+func (r *RuleEngine) evaluateWithLogger(event Event, logger *log.Logger) []RuleMatch {
 	if len(r.rules) == 0 {
 		return nil
+	}
+	if logger == nil {
+		logger = log.Default()
 	}
 
 	matches := make([]RuleMatch, 0, 1)
 	for _, rule := range r.rules {
-		params, missing := resolveRuleParams(r.logger, event, rule.vars, rule.varMap)
-		r.logger.Printf("rule debug: when=%q params=%v", rule.expr.String(), params)
+		params, missing := resolveRuleParams(logger, event, rule.vars, rule.varMap)
+		logger.Printf("rule debug: when=%q params=%v", rule.expr.String(), params)
 		if r.strict && len(missing) > 0 {
-			r.logger.Printf("rule strict missing params: %v", missing)
+			logger.Printf("rule strict missing params: %v", missing)
 			continue
 		}
 		result, err := rule.expr.Evaluate(params)
 		if err != nil {
-			r.logger.Printf("rule eval failed: %v", err)
+			logger.Printf("rule eval failed: %v", err)
 			continue
 		}
 		ok, _ := result.(bool)

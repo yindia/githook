@@ -13,12 +13,16 @@ import (
 type AppConfig struct {
 	// Server holds server-specific configuration.
 	Server struct {
-		Port           int   `yaml:"port"`
-		ReadTimeoutMS  int64 `yaml:"read_timeout_ms"`
-		WriteTimeoutMS int64 `yaml:"write_timeout_ms"`
-		IdleTimeoutMS  int64 `yaml:"idle_timeout_ms"`
-		ReadHeaderMS   int64 `yaml:"read_header_timeout_ms"`
-		MaxBodyBytes   int64 `yaml:"max_body_bytes"`
+		Port           int    `yaml:"port"`
+		ReadTimeoutMS  int64  `yaml:"read_timeout_ms"`
+		WriteTimeoutMS int64  `yaml:"write_timeout_ms"`
+		IdleTimeoutMS  int64  `yaml:"idle_timeout_ms"`
+		ReadHeaderMS   int64  `yaml:"read_header_timeout_ms"`
+		MaxBodyBytes   int64  `yaml:"max_body_bytes"`
+		RateLimitRPS   int64  `yaml:"rate_limit_rps"`
+		RateLimitBurst int64  `yaml:"rate_limit_burst"`
+		MetricsEnabled bool   `yaml:"metrics_enabled"`
+		MetricsPath    string `yaml:"metrics_path"`
 	} `yaml:"server"`
 	// Providers contains configuration for each Git provider.
 	Providers struct {
@@ -46,15 +50,17 @@ type ProviderConfig struct {
 
 // WatermillConfig holds the configuration for Watermill, which handles messaging.
 type WatermillConfig struct {
-	Driver     string           `yaml:"driver"`
-	Drivers    []string         `yaml:"drivers"`
-	GoChannel  GoChannelConfig  `yaml:"gochannel"`
-	Kafka      KafkaConfig      `yaml:"kafka"`
-	NATS       NATSConfig       `yaml:"nats"`
-	AMQP       AMQPConfig       `yaml:"amqp"`
-	SQL        SQLConfig        `yaml:"sql"`
-	HTTP       HTTPConfig       `yaml:"http"`
-	RiverQueue RiverQueueConfig `yaml:"riverqueue"`
+	Driver       string             `yaml:"driver"`
+	Drivers      []string           `yaml:"drivers"`
+	GoChannel    GoChannelConfig    `yaml:"gochannel"`
+	Kafka        KafkaConfig        `yaml:"kafka"`
+	NATS         NATSConfig         `yaml:"nats"`
+	AMQP         AMQPConfig         `yaml:"amqp"`
+	SQL          SQLConfig          `yaml:"sql"`
+	HTTP         HTTPConfig         `yaml:"http"`
+	RiverQueue   RiverQueueConfig   `yaml:"riverqueue"`
+	PublishRetry PublishRetryConfig `yaml:"publish_retry"`
+	DLQDriver    string             `yaml:"dlq_driver"`
 }
 
 // GoChannelConfig holds configuration for the GoChannel pub/sub.
@@ -107,6 +113,11 @@ type RiverQueueConfig struct {
 	MaxAttempts int      `yaml:"max_attempts"`
 	Priority    int      `yaml:"priority"`
 	Tags        []string `yaml:"tags"`
+}
+
+type PublishRetryConfig struct {
+	Attempts int `yaml:"attempts"`
+	DelayMS  int `yaml:"delay_ms"`
 }
 
 // LoadAppConfig loads the main application configuration from a YAML file.
@@ -196,6 +207,9 @@ func applyDefaults(cfg *AppConfig) {
 	if cfg.Server.MaxBodyBytes == 0 {
 		cfg.Server.MaxBodyBytes = 1 << 20
 	}
+	if cfg.Server.MetricsPath == "" {
+		cfg.Server.MetricsPath = "/metrics"
+	}
 	if cfg.Providers.GitHub.Path == "" {
 		cfg.Providers.GitHub.Path = "/webhooks/github"
 	}
@@ -225,6 +239,12 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.Watermill.RiverQueue.MaxAttempts == 0 {
 		cfg.Watermill.RiverQueue.MaxAttempts = 25
+	}
+	if cfg.Watermill.PublishRetry.Attempts == 0 {
+		cfg.Watermill.PublishRetry.Attempts = 3
+	}
+	if cfg.Watermill.PublishRetry.DelayMS == 0 {
+		cfg.Watermill.PublishRetry.DelayMS = 500
 	}
 }
 

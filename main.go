@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"flag"
 	"net/http"
 	"os"
@@ -88,10 +89,19 @@ func main() {
 		logger.Printf("bitbucket webhook enabled on %s", config.Providers.Bitbucket.Path)
 	}
 
+	if config.Server.MetricsEnabled {
+		mux.Handle(config.Server.MetricsPath, expvar.Handler())
+	}
+
+	handler := http.Handler(mux)
+	if config.Server.RateLimitRPS > 0 {
+		handler = internal.NewRateLimitHandler(handler, config.Server.RateLimitRPS, config.Server.RateLimitBurst, 5*time.Minute)
+	}
+
 	addr := ":" + strconv.Itoa(config.Server.Port)
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           handler,
 		ReadTimeout:       time.Duration(config.Server.ReadTimeoutMS) * time.Millisecond,
 		WriteTimeout:      time.Duration(config.Server.WriteTimeoutMS) * time.Millisecond,
 		IdleTimeout:       time.Duration(config.Server.IdleTimeoutMS) * time.Millisecond,

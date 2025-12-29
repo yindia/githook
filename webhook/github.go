@@ -90,6 +90,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	w.Header().Set("X-Request-Id", reqID)
 	logger := internal.WithRequestID(h.logger, reqID)
+	internal.IncRequest("github")
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -100,6 +101,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	payload, err := h.hook.Parse(r, githubEvents...)
 	if err != nil {
 		logger.Printf("github parse failed: %v", err)
+		internal.IncParseError("github")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -114,6 +116,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.emit(r, logger, internal.Event{
 			Provider:   "github",
 			Name:       eventName,
+			RequestID:  reqID,
 			Data:       data,
 			RawPayload: rawBody,
 			RawObject:  rawObject,
@@ -124,7 +127,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *GitHubHandler) emit(r *http.Request, logger *log.Logger, event internal.Event) {
-	topics := h.rules.Evaluate(event)
+	topics := h.rules.EvaluateWithLogger(event, logger)
 	logger.Printf("event provider=%s name=%s topics=%v", event.Provider, event.Name, topics)
 	for _, match := range topics {
 		if err := h.publisher.PublishForDrivers(r.Context(), match.Topic, event, match.Drivers); err != nil {

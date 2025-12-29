@@ -84,7 +84,13 @@ func NewPublisher(cfg WatermillConfig) (Publisher, error) {
 	if len(pubs) == 0 {
 		return nil, errors.New("no publishers available")
 	}
-	return &publisherMux{publishers: pubs, defaultDrivers: builtDrivers}, nil
+	return &publisherMux{
+		publishers:     pubs,
+		defaultDrivers: builtDrivers,
+		retryAttempts:  cfg.PublishRetry.Attempts,
+		retryDelay:     time.Duration(cfg.PublishRetry.DelayMS) * time.Millisecond,
+		dlqDriver:      strings.ToLower(strings.TrimSpace(cfg.DLQDriver)),
+	}, nil
 }
 
 func newSinglePublisher(cfg WatermillConfig, driver string) (Publisher, error) {
@@ -236,6 +242,12 @@ func (w *watermillPublisher) Publish(ctx context.Context, topic string, event Ev
 	}
 
 	msg := message.NewMessage(watermill.NewUUID(), payload)
+	if event.RequestID != "" {
+		if msg.Metadata == nil {
+			msg.Metadata = message.Metadata{}
+		}
+		msg.Metadata.Set("request_id", event.RequestID)
+	}
 	return w.publisher.Publish(topic, msg)
 }
 
@@ -260,6 +272,9 @@ func (w *watermillPublisher) PublishForDrivers(ctx context.Context, topic string
 type publisherMux struct {
 	publishers     map[string]Publisher
 	defaultDrivers []string
+	retryAttempts  int
+	retryDelay     time.Duration
+	dlqDriver      string
 }
 
 // Publish sends an event to the default drivers.
@@ -276,16 +291,43 @@ func (m *publisherMux) PublishForDrivers(ctx context.Context, topic string, even
 
 	var err error
 	for _, driver := range targets {
-		pub, ok := m.publishers[strings.ToLower(driver)]
+		normalized := strings.ToLower(driver)
+		pub, ok := m.publishers[normalized]
 		if !ok {
 			err = errors.Join(err, fmt.Errorf("unknown driver %s", driver))
 			continue
 		}
-		if publishErr := pub.Publish(ctx, topic, event); publishErr != nil {
+		if publishErr := m.publishWithRetry(ctx, pub, topic, event); publishErr != nil {
 			err = errors.Join(err, publishErr)
+			IncPublishError(normalized)
+			if m.dlqDriver != "" && m.dlqDriver != normalized {
+				if dlq, ok := m.publishers[m.dlqDriver]; ok {
+					_ = m.publishWithRetry(ctx, dlq, topic, event)
+				}
+			}
 		}
 	}
 	return err
+}
+
+func (m *publisherMux) publishWithRetry(ctx context.Context, pub Publisher, topic string, event Event) error {
+	attempts := m.retryAttempts
+	if attempts <= 0 {
+		attempts = 1
+	}
+	delay := m.retryDelay
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		if i > 0 && delay > 0 {
+			time.Sleep(delay)
+		}
+		if err := pub.Publish(ctx, topic, event); err != nil {
+			lastErr = err
+			continue
+		}
+		return nil
+	}
+	return lastErr
 }
 
 // Close closes all underlying publishers.

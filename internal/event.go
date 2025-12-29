@@ -6,6 +6,8 @@ type Event struct {
 	Provider string `json:"provider"`
 	// Name is the name of the event (e.g., "pull_request", "push").
 	Name string `json:"name"`
+	// RequestID links the event back to the inbound webhook request.
+	RequestID string `json:"request_id,omitempty"`
 	// Data is the flattened JSON payload of the event.
 	Data map[string]interface{} `json:"data"`
 	// RawPayload is the raw JSON payload from the webhook.

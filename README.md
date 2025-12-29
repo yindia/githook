@@ -1,6 +1,6 @@
 # Githooks
 
-Githooks is a config-driven webhook router for GitHub, GitLab, and Bitbucket. It normalizes inbound webhook events, evaluates them against YAML rules, and publishes matching events to [Watermill](https://watermill.io/) topics for downstream consumers.
+Githooks is a config-driven webhook router and worker SDK for GitHub, GitLab, and Bitbucket. It normalizes inbound webhook events, evaluates them against YAML rules, and publishes matching events to [Watermill](https://watermill.io/) topics. The SDK then lets you build broker-agnostic workers with client injection, retries, and graceful shutdown.
 
 **Warning:** This project is intended for research and development use only. It is not production-ready.
 
@@ -83,6 +83,7 @@ Docs:
 - [Driver configuration](docs/drivers.md)
 - [Event compatibility](docs/events.md)
 - [Rules engine](docs/rules.md)
+- [Observability](docs/observability.md)
 - [Webhook setup](docs/webhooks.md)
 - [SDK client injection](docs/sdk_clients.md)
 
@@ -119,6 +120,10 @@ server:
   idle_timeout_ms: 60000
   read_header_timeout_ms: 5000
   max_body_bytes: 1048576
+  rate_limit_rps: 0
+  rate_limit_burst: 0
+  metrics_enabled: false
+  metrics_path: /metrics
 ```
 
 ### Watermill Drivers (Publishing)

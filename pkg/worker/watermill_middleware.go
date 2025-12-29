@@ -11,7 +11,7 @@ import (
 func MiddlewareFromWatermill(m message.HandlerMiddleware) Middleware {
 	return func(next Handler) Handler {
 		return func(ctx context.Context, evt *Event) error {
-			payload := []byte(evt.Payload)
+			payload := message.Payload(evt.Payload)
 			msg := message.NewMessage(watermill.NewUUID(), payload)
 			if evt.Metadata != nil {
 				msg.Metadata = message.Metadata{}
