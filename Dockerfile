@@ -7,7 +7,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/githooks .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/worker ./example/github/worker/main.go 
 
-FROM alpine:3.19 AS githooks
+FROM alpine:3.19 
 WORKDIR /app
 COPY --from=builder /out/githooks /usr/local/bin/githooks
 EXPOSE 8080
