@@ -14,7 +14,9 @@ type AppConfig struct {
 		Port int `yaml:"port"`
 	} `yaml:"server"`
 	Providers struct {
-		GitHub ProviderConfig `yaml:"github"`
+		GitHub    ProviderConfig `yaml:"github"`
+		GitLab    ProviderConfig `yaml:"gitlab"`
+		Bitbucket ProviderConfig `yaml:"bitbucket"`
 	} `yaml:"providers"`
 	Watermill WatermillConfig `yaml:"watermill"`
 }
@@ -144,6 +146,12 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.Providers.GitHub.Path == "" {
 		cfg.Providers.GitHub.Path = "/webhooks/github"
+	}
+	if cfg.Providers.GitLab.Path == "" {
+		cfg.Providers.GitLab.Path = "/webhooks/gitlab"
+	}
+	if cfg.Providers.Bitbucket.Path == "" {
+		cfg.Providers.Bitbucket.Path = "/webhooks/bitbucket"
 	}
 	if cfg.Watermill.Driver == "" {
 		cfg.Watermill.Driver = "gochannel"

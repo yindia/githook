@@ -24,6 +24,12 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.AppConfig.Providers.GitHub.Path != "/webhooks/github" {
 		t.Fatalf("expected default github path, got %q", cfg.AppConfig.Providers.GitHub.Path)
 	}
+	if cfg.AppConfig.Providers.GitLab.Path != "/webhooks/gitlab" {
+		t.Fatalf("expected default gitlab path, got %q", cfg.AppConfig.Providers.GitLab.Path)
+	}
+	if cfg.AppConfig.Providers.Bitbucket.Path != "/webhooks/bitbucket" {
+		t.Fatalf("expected default bitbucket path, got %q", cfg.AppConfig.Providers.Bitbucket.Path)
+	}
 	if cfg.AppConfig.Watermill.Driver != "gochannel" {
 		t.Fatalf("expected default watermill driver, got %q", cfg.AppConfig.Watermill.Driver)
 	}

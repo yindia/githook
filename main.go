@@ -55,6 +55,34 @@ func main() {
 		logger.Printf("github webhook enabled on %s", config.Providers.GitHub.Path)
 	}
 
+	if config.Providers.GitLab.Enabled {
+		glHandler, err := webhook.NewGitLabHandler(
+			config.Providers.GitLab.Secret,
+			ruleEngine,
+			publisher,
+			logger,
+		)
+		if err != nil {
+			logger.Fatalf("gitlab handler: %v", err)
+		}
+		mux.Handle(config.Providers.GitLab.Path, glHandler)
+		logger.Printf("gitlab webhook enabled on %s", config.Providers.GitLab.Path)
+	}
+
+	if config.Providers.Bitbucket.Enabled {
+		bbHandler, err := webhook.NewBitbucketHandler(
+			config.Providers.Bitbucket.Secret,
+			ruleEngine,
+			publisher,
+			logger,
+		)
+		if err != nil {
+			logger.Fatalf("bitbucket handler: %v", err)
+		}
+		mux.Handle(config.Providers.Bitbucket.Path, bbHandler)
+		logger.Printf("bitbucket webhook enabled on %s", config.Providers.Bitbucket.Path)
+	}
+
 	addr := ":" + strconv.Itoa(config.Server.Port)
 	server := &http.Server{
 		Addr:              addr,

@@ -266,21 +266,25 @@ providers:
     secret: ${GITHUB_WEBHOOK_SECRET} # Use environment variable for secret
 ```
 
-**GitLab / Bitbucket (planned):**
+**GitLab / Bitbucket:**
 ```yaml
 providers:
   gitlab:
     enabled: false
+    path: /webhooks/gitlab
+    secret: ${GITLAB_WEBHOOK_SECRET}
   bitbucket:
     enabled: false
+    path: /webhooks/bitbucket
+    secret: ${BITBUCKET_WEBHOOK_SECRET}
 ```
 
 ### Supported Providers
 | Provider | Status |
 | --- | --- |
 | GitHub | Supported |
-| GitLab | Planned |
-| Bitbucket | Planned |
+| GitLab | Supported |
+| Bitbucket | Supported |
 
 
 ### Watermill Drivers (Publishers)
