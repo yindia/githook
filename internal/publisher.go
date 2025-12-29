@@ -21,23 +21,30 @@ import (
 	stan "github.com/nats-io/stan.go"
 )
 
+// Publisher defines the interface for publishing events.
 type Publisher interface {
+	// Publish sends an event to a specific topic.
 	Publish(ctx context.Context, topic string, event Event) error
+	// PublishForDrivers sends an event to a specific topic for a given set of drivers.
 	PublishForDrivers(ctx context.Context, topic string, event Event, drivers []string) error
+	// Close gracefully closes the publisher and its underlying connections.
 	Close() error
 }
 
+// watermillPublisher is a wrapper around a Watermill message.Publisher.
 type watermillPublisher struct {
 	publisher message.Publisher
 	closeFn   func() error
 }
 
+// PublisherFactory is a function that creates a new Watermill publisher.
 type PublisherFactory func(cfg WatermillConfig, logger watermill.LoggerAdapter) (message.Publisher, func() error, error)
 
 var publisherFactories = map[string]PublisherFactory{
 	"gochannel": buildGoChannelPublisher,
 }
 
+// RegisterPublisherDriver registers a new publisher driver.
 func RegisterPublisherDriver(name string, factory PublisherFactory) {
 	if name == "" || factory == nil {
 		return
@@ -45,6 +52,8 @@ func RegisterPublisherDriver(name string, factory PublisherFactory) {
 	publisherFactories[strings.ToLower(name)] = factory
 }
 
+// NewPublisher creates a new publisher based on the provided configuration.
+// It can create multiple publishers if multiple drivers are configured.
 func NewPublisher(cfg WatermillConfig) (Publisher, error) {
 	logger := watermill.NewStdLogger(false, false)
 
@@ -219,6 +228,7 @@ func retryPublisherBuild(build func() (Publisher, error)) (Publisher, error) {
 	return nil, lastErr
 }
 
+// Publish sends an event to a topic using the underlying Watermill publisher.
 func (w *watermillPublisher) Publish(ctx context.Context, topic string, event Event) error {
 	payload, err := json.Marshal(event)
 	if err != nil {
@@ -229,6 +239,7 @@ func (w *watermillPublisher) Publish(ctx context.Context, topic string, event Ev
 	return w.publisher.Publish(topic, msg)
 }
 
+// Close closes the underlying Watermill publisher.
 func (w *watermillPublisher) Close() error {
 	if w.publisher == nil {
 		return nil
@@ -240,19 +251,23 @@ func (w *watermillPublisher) Close() error {
 	return err
 }
 
+// PublishForDrivers is a convenience method that calls Publish.
 func (w *watermillPublisher) PublishForDrivers(ctx context.Context, topic string, event Event, drivers []string) error {
 	return w.Publish(ctx, topic, event)
 }
 
+// publisherMux multiplexes events to multiple publishers.
 type publisherMux struct {
 	publishers     map[string]Publisher
 	defaultDrivers []string
 }
 
+// Publish sends an event to the default drivers.
 func (m *publisherMux) Publish(ctx context.Context, topic string, event Event) error {
 	return m.PublishForDrivers(ctx, topic, event, nil)
 }
 
+// PublishForDrivers sends an event to the specified drivers, or the default drivers if none are specified.
 func (m *publisherMux) PublishForDrivers(ctx context.Context, topic string, event Event, drivers []string) error {
 	targets := drivers
 	if len(targets) == 0 {
@@ -273,6 +288,7 @@ func (m *publisherMux) PublishForDrivers(ctx context.Context, topic string, even
 	return err
 }
 
+// Close closes all underlying publishers.
 func (m *publisherMux) Close() error {
 	var err error
 	for _, pub := range m.publishers {

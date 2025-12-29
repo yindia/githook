@@ -2,6 +2,7 @@ package worker
 
 import "context"
 
+// ProviderClients is a struct that holds a map of client providers for each Git provider.
 type ProviderClients struct {
 	GitHub    func(ctx context.Context, evt *Event) (interface{}, error)
 	GitLab    func(ctx context.Context, evt *Event) (interface{}, error)
@@ -9,6 +10,8 @@ type ProviderClients struct {
 	Default   func(ctx context.Context, evt *Event) (interface{}, error)
 }
 
+// Client returns a client for the provider specified in the event.
+// It implements the ClientProvider interface.
 func (p ProviderClients) Client(ctx context.Context, evt *Event) (interface{}, error) {
 	switch evt.Provider {
 	case "github":

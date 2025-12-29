@@ -9,12 +9,18 @@ import (
 	"github.com/PaesslerAG/jsonpath"
 )
 
+// Rule defines a condition and an action to take when the condition is met.
 type Rule struct {
-	When    string   `yaml:"when"`
-	Emit    string   `yaml:"emit"`
+	// When is a govaluate expression that is evaluated against the event data.
+	When string `yaml:"when"`
+	// Emit is the topic to publish the event to if the 'When' expression is true.
+	Emit string `yaml:"emit"`
+	// Drivers is a list of publisher drivers to use for this rule.
+	// If empty, the default drivers are used.
 	Drivers []string `yaml:"drivers"`
 }
 
+// compiledRule is a pre-processed version of a Rule.
 type compiledRule struct {
 	emit    string
 	drivers []string
@@ -23,17 +29,21 @@ type compiledRule struct {
 	expr    *govaluate.EvaluableExpression
 }
 
+// RuleEngine evaluates events against a set of rules.
 type RuleEngine struct {
 	rules  []compiledRule
 	strict bool
 	logger *log.Logger
 }
 
+// RuleMatch represents a successful rule evaluation.
 type RuleMatch struct {
 	Topic   string
 	Drivers []string
 }
 
+// NewRuleEngine creates a new RuleEngine from a set of rules.
+// It pre-compiles the expressions in the rules for faster evaluation.
 func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
 	logger := cfg.Logger
 	if logger == nil {
@@ -58,6 +68,7 @@ func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
 	return &RuleEngine{rules: rules, strict: cfg.Strict, logger: logger}, nil
 }
 
+// Evaluate runs an event through the rule engine and returns a list of topics to publish to.
 func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
 	if len(r.rules) == 0 {
 		return nil

@@ -21,7 +21,7 @@ go run ./main.go -config example/riverqueue/app.yaml
 
 ## 4) Send a webhook
 ```sh
-./example/riverqueue/send_webhook.sh
+./scripts/send_webhook.sh github pull_request example/github/pull_request.json
 ```
 
 ## 5) Verify job inserted

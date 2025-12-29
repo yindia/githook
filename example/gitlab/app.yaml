@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+providers:
+  gitlab:
+    enabled: true
+    path: /webhooks/gitlab
+    secret: ${GITLAB_WEBHOOK_SECRET}
+
+watermill:
+  driver: gochannel
+
+rules:
+  - when: object_kind == "merge_request" && object_attributes.state == "opened"
+    emit: gitlab.mr.opened
+
+  - when: object_kind == "merge_request" && object_attributes.state == "merged"
+    emit: gitlab.mr.merged
+
+  - when: object_kind == "push"
+    emit: gitlab.push

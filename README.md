@@ -42,12 +42,14 @@ go run ./example/github/worker/main.go -config app.docker.yaml
 
 4. Send a test webhook:
 ```bash
-./example/github/send_webhook.sh
+./scripts/send_webhook.sh github pull_request example/github/pull_request.json
 ```
 
 Examples:
 - `example/realworld` (multiple workers, single driver)
 - `example/riverqueue` (publish to RiverQueue and consume with River workers)
+- `example/gitlab` (GitLab webhook sample)
+- `example/bitbucket` (Bitbucket webhook sample)
 
 ## Production Setup
 
@@ -61,6 +63,11 @@ For GitHub, prefer a GitHub App:
 ## Configuration
 
 Githooks is configured using a YAML file (local dev uses `app.docker.yaml`).
+
+Further docs:
+- `docs/drivers.md` (driver configuration)
+- `docs/events.md` (provider event compatibility)
+- `docs/rules.md` (rules engine)
 
 ### Providers
 ```yaml

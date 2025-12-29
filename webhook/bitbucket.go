@@ -11,6 +11,7 @@ import (
 	"github.com/go-playground/webhooks/v6/bitbucket"
 )
 
+// BitbucketHandler handles incoming webhooks from Bitbucket.
 type BitbucketHandler struct {
 	hook      *bitbucket.Webhook
 	rules     *internal.RuleEngine
@@ -39,6 +40,7 @@ var bitbucketEvents = []bitbucket.Event{
 	bitbucket.PullRequestCommentDeletedEvent,
 }
 
+// NewBitbucketHandler creates a new BitbucketHandler.
 func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger) (*BitbucketHandler, error) {
 	options := make([]bitbucket.Option, 0, 1)
 	if secret != "" {
@@ -54,6 +56,7 @@ func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher in
 	return &BitbucketHandler{hook: hook, rules: rules, publisher: publisher, logger: logger}, nil
 }
 
+// ServeHTTP handles an incoming HTTP request.
 func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {

@@ -2,6 +2,10 @@ package internal
 
 import "fmt"
 
+// Flatten takes a nested map and returns a new map with the keys flattened into a single level.
+// Nested map keys are joined with a ".".
+// For example, `{"a": {"b": 1}}` becomes `{"a.b": 1}`.
+// It also handles arrays by creating special keys.
 func Flatten(data map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{})
 	for key, value := range data {

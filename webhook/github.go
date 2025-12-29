@@ -11,6 +11,7 @@ import (
 	"github.com/go-playground/webhooks/v6/github"
 )
 
+// GitHubHandler handles incoming webhooks from GitHub.
 type GitHubHandler struct {
 	hook      *github.Webhook
 	rules     *internal.RuleEngine
@@ -67,6 +68,7 @@ var githubEvents = []github.Event{
 	github.GitHubAppAuthorizationEvent,
 }
 
+// NewGitHubHandler creates a new GitHubHandler.
 func NewGitHubHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger) (*GitHubHandler, error) {
 	hook, err := github.New(github.Options.Secret(secret))
 	if err != nil {
@@ -79,6 +81,7 @@ func NewGitHubHandler(secret string, rules *internal.RuleEngine, publisher inter
 	return &GitHubHandler{hook: hook, rules: rules, publisher: publisher, logger: logger}, nil
 }
 
+// ServeHTTP handles an incoming HTTP request.
 func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {

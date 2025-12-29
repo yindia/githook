@@ -7,16 +7,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// AppConfig is a partial representation of the main application config,
+// used for loading worker-specific configuration.
 type AppConfig struct {
 	Watermill SubscriberConfig `yaml:"watermill"`
 }
 
+// RulesConfig is a partial representation of the rules configuration,
+// used for extracting topic names.
 type RulesConfig struct {
 	Rules []struct {
 		Emit string `yaml:"emit"`
 	} `yaml:"rules"`
 }
 
+// LoadSubscriberConfig loads the subscriber configuration from a YAML file.
+// It expands environment variables and applies default values.
 func LoadSubscriberConfig(path string) (SubscriberConfig, error) {
 	var cfg AppConfig
 	data, err := os.ReadFile(path)
@@ -31,6 +37,8 @@ func LoadSubscriberConfig(path string) (SubscriberConfig, error) {
 	return cfg.Watermill, nil
 }
 
+// LoadTopicsFromConfig extracts a unique list of topic names from the 'emit' fields
+// in a rules configuration file.
 func LoadTopicsFromConfig(path string) ([]string, error) {
 	var cfg RulesConfig
 	data, err := os.ReadFile(path)

@@ -8,6 +8,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// Worker is a message-processing worker that subscribes to topics, decodes
+// messages, and dispatches them to handlers.
 type Worker struct {
 	subscriber  message.Subscriber
 	codec       Codec
@@ -24,6 +26,7 @@ type Worker struct {
 	allowedTopics  map[string]struct{}
 }
 
+// New creates a new Worker with the given options.
 func New(opts ...Option) *Worker {
 	w := &Worker{
 		codec:         DefaultCodec{},
@@ -40,6 +43,7 @@ func New(opts ...Option) *Worker {
 	return w
 }
 
+// HandleTopic registers a handler for a specific topic.
 func (w *Worker) HandleTopic(topic string, h Handler) {
 	if h == nil || topic == "" {
 		return
@@ -54,6 +58,7 @@ func (w *Worker) HandleTopic(topic string, h Handler) {
 	w.topics = append(w.topics, topic)
 }
 
+// HandleType registers a handler for a specific event type.
 func (w *Worker) HandleType(eventType string, h Handler) {
 	if h == nil || eventType == "" {
 		return
@@ -61,6 +66,8 @@ func (w *Worker) HandleType(eventType string, h Handler) {
 	w.typeHandlers[eventType] = h
 }
 
+// Run starts the worker, subscribing to topics and processing messages.
+// It blocks until the context is canceled.
 func (w *Worker) Run(ctx context.Context) error {
 	if w.subscriber == nil {
 		return errors.New("subscriber is required")
@@ -112,6 +119,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	return nil
 }
 
+// Close gracefully shuts down the worker and its subscriber.
 func (w *Worker) Close() error {
 	if w.subscriber == nil {
 		return nil

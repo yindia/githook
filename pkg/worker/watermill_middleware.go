@@ -7,6 +7,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// MiddlewareFromWatermill converts a Watermill message.HandlerMiddleware into a worker Middleware.
 func MiddlewareFromWatermill(m message.HandlerMiddleware) Middleware {
 	return func(next Handler) Handler {
 		return func(ctx context.Context, evt *Event) error {

@@ -9,30 +9,37 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// AppConfig represents the main application configuration.
 type AppConfig struct {
+	// Server holds server-specific configuration.
 	Server struct {
 		Port int `yaml:"port"`
 	} `yaml:"server"`
+	// Providers contains configuration for each Git provider.
 	Providers struct {
 		GitHub    ProviderConfig `yaml:"github"`
 		GitLab    ProviderConfig `yaml:"gitlab"`
 		Bitbucket ProviderConfig `yaml:"bitbucket"`
 	} `yaml:"providers"`
+	// Watermill holds configuration for the message router.
 	Watermill WatermillConfig `yaml:"watermill"`
 }
 
+// Config represents the application configuration including rules.
 type Config struct {
 	AppConfig   `yaml:",inline"`
 	Rules       []Rule `yaml:"rules"`
 	RulesStrict bool   `yaml:"rules_strict"`
 }
 
+// ProviderConfig represents the configuration for a single Git provider.
 type ProviderConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Path    string `yaml:"path"`
 	Secret  string `yaml:"secret"`
 }
 
+// WatermillConfig holds the configuration for Watermill, which handles messaging.
 type WatermillConfig struct {
 	Driver     string           `yaml:"driver"`
 	Drivers    []string         `yaml:"drivers"`
@@ -45,27 +52,32 @@ type WatermillConfig struct {
 	RiverQueue RiverQueueConfig `yaml:"riverqueue"`
 }
 
+// GoChannelConfig holds configuration for the GoChannel pub/sub.
 type GoChannelConfig struct {
 	OutputChannelBuffer            int64 `yaml:"output_buffer"`
 	Persistent                     bool  `yaml:"persistent"`
 	BlockPublishUntilSubscriberAck bool  `yaml:"block_publish_until_subscriber_ack"`
 }
 
+// KafkaConfig holds configuration for the Kafka pub/sub.
 type KafkaConfig struct {
 	Brokers []string `yaml:"brokers"`
 }
 
+// NATSConfig holds configuration for the NATS pub/sub.
 type NATSConfig struct {
 	ClusterID string `yaml:"cluster_id"`
 	ClientID  string `yaml:"client_id"`
 	URL       string `yaml:"url"`
 }
 
+// AMQPConfig holds configuration for the AMQP pub/sub.
 type AMQPConfig struct {
 	URL  string `yaml:"url"`
 	Mode string `yaml:"mode"`
 }
 
+// SQLConfig holds configuration for the SQL pub/sub.
 type SQLConfig struct {
 	Driver               string `yaml:"driver"`
 	DSN                  string `yaml:"dsn"`
@@ -74,11 +86,13 @@ type SQLConfig struct {
 	AutoInitializeSchema bool   `yaml:"auto_initialize_schema"`
 }
 
+// HTTPConfig holds configuration for the HTTP publisher.
 type HTTPConfig struct {
 	BaseURL string `yaml:"base_url"`
 	Mode    string `yaml:"mode"`
 }
 
+// RiverQueueConfig holds configuration for the RiverQueue publisher.
 type RiverQueueConfig struct {
 	Driver      string   `yaml:"driver"`
 	DSN         string   `yaml:"dsn"`
@@ -90,6 +104,8 @@ type RiverQueueConfig struct {
 	Tags        []string `yaml:"tags"`
 }
 
+// LoadAppConfig loads the main application configuration from a YAML file.
+// It expands environment variables and applies default values.
 func LoadAppConfig(path string) (AppConfig, error) {
 	var cfg AppConfig
 	data, err := os.ReadFile(path)
@@ -106,6 +122,8 @@ func LoadAppConfig(path string) (AppConfig, error) {
 	return cfg, nil
 }
 
+// LoadConfig loads the full application configuration, including rules, from a YAML file.
+// It expands environment variables, applies defaults, and normalizes rules.
 func LoadConfig(path string) (Config, error) {
 	var cfg Config
 	data, err := os.ReadFile(path)
@@ -129,12 +147,14 @@ func LoadConfig(path string) (Config, error) {
 	return cfg, nil
 }
 
+// RulesConfig represents the rule-specific parts of the configuration.
 type RulesConfig struct {
 	Rules  []Rule `yaml:"rules"`
 	Strict bool   `yaml:"rules_strict"`
 	Logger *log.Logger
 }
 
+// LoadRulesConfig loads only the rules from a YAML configuration file.
 func LoadRulesConfig(path string) (RulesConfig, error) {
 	var cfg RulesConfig
 	data, err := os.ReadFile(path)

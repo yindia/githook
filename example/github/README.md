@@ -9,8 +9,15 @@ This example sends a GitHub pull_request webhook to the local githooks server.
 ## Run
 ```sh
 export GITHUB_WEBHOOK_SECRET=devsecret
-./example/github/send_webhook.sh
+./scripts/send_webhook.sh github pull_request example/github/pull_request.json
 ```
+
+Tag event:
+```sh
+./scripts/send_webhook.sh github create example/github/tag_created.json
+```
+
+Example config (rules) is in `example/github/app.yaml`.
 
 ## Alternate payload
 Pass a JSON file to send a different payload:

@@ -11,6 +11,7 @@ import (
 	"github.com/go-playground/webhooks/v6/gitlab"
 )
 
+// GitLabHandler handles incoming webhooks from GitLab.
 type GitLabHandler struct {
 	hook      *gitlab.Webhook
 	rules     *internal.RuleEngine
@@ -34,6 +35,7 @@ var gitlabEvents = []gitlab.Event{
 	gitlab.SystemHookEvents,
 }
 
+// NewGitLabHandler creates a new GitLabHandler.
 func NewGitLabHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger) (*GitLabHandler, error) {
 	options := make([]gitlab.Option, 0, 1)
 	if secret != "" {
@@ -49,6 +51,7 @@ func NewGitLabHandler(secret string, rules *internal.RuleEngine, publisher inter
 	return &GitLabHandler{hook: hook, rules: rules, publisher: publisher, logger: logger}, nil
 }
 
+// ServeHTTP handles an incoming HTTP request.
 func (h *GitLabHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {

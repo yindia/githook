@@ -1,0 +1,30 @@
+# Rules Engine
+
+Rules use JSONPath for field access and boolean logic for matching. Each matching rule emits a topic and optionally targets specific drivers.
+
+## Syntax
+```yaml
+rules:
+  - when: action == "opened" && pull_request.draft == false
+    emit: pr.opened.ready
+  - when: action == "closed" && pull_request.merged == true
+    emit: pr.merged
+    drivers: [amqp, http]
+```
+
+## JSONPath
+- Bare identifiers are treated as root JSONPath (e.g., `action` becomes `$.action`).
+- Arrays are supported: `$.pull_request.commits[0].created == true`.
+
+## Driver Targeting
+- `drivers` omitted: publish to all configured drivers.
+- `drivers` specified: publish only to those drivers.
+
+## Strict Mode
+Set `rules_strict: true` to skip a rule if any JSONPath in its `when` clause is missing.
+
+## Debugging
+Enable logs and look for:
+- `rule debug: when=... params=...`
+- `rule warn: jsonpath no match path=...`
+- `rule eval failed: ...`

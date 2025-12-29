@@ -10,11 +10,13 @@ import (
 	"github.com/lib/pq"
 )
 
+// riverQueuePublisher is a publisher that sends events to a RiverQueue job queue.
 type riverQueuePublisher struct {
 	db  *sql.DB
 	cfg RiverQueueConfig
 }
 
+// newRiverQueuePublisher creates a new RiverQueue publisher.
 func newRiverQueuePublisher(cfg RiverQueueConfig) (*riverQueuePublisher, error) {
 	driver := cfg.Driver
 	if driver == "" {
@@ -30,6 +32,7 @@ func newRiverQueuePublisher(cfg RiverQueueConfig) (*riverQueuePublisher, error) 
 	return &riverQueuePublisher{db: db, cfg: cfg}, nil
 }
 
+// Publish inserts a new job into the RiverQueue jobs table.
 func (p *riverQueuePublisher) Publish(ctx context.Context, topic string, event Event) error {
 	argsPayload := event.RawPayload
 	if len(argsPayload) == 0 {
@@ -79,6 +82,7 @@ VALUES ($1, $2, $3, $4, $5, $6, now(), $7)`,
 	return err
 }
 
+// Close closes the underlying database connection.
 func (p *riverQueuePublisher) Close() error {
 	if p.db == nil {
 		return nil
@@ -86,6 +90,7 @@ func (p *riverQueuePublisher) Close() error {
 	return p.db.Close()
 }
 
+// PublishForDrivers is a convenience method that calls Publish.
 func (p *riverQueuePublisher) PublishForDrivers(ctx context.Context, topic string, event Event, drivers []string) error {
 	return p.Publish(ctx, topic, event)
 }

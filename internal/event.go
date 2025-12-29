@@ -1,9 +1,15 @@
 package internal
 
+// Event represents a webhook event from a Git provider.
 type Event struct {
-	Provider   string                 `json:"provider"`
-	Name       string                 `json:"name"`
-	Data       map[string]interface{} `json:"data"`
-	RawPayload []byte                 `json:"-"`
-	RawObject  interface{}            `json:"-"`
+	// Provider is the name of the Git provider (e.g., "github", "gitlab").
+	Provider string `json:"provider"`
+	// Name is the name of the event (e.g., "pull_request", "push").
+	Name string `json:"name"`
+	// Data is the flattened JSON payload of the event.
+	Data map[string]interface{} `json:"data"`
+	// RawPayload is the raw JSON payload from the webhook.
+	RawPayload []byte `json:"-"`
+	// RawObject is the unmarshalled JSON payload.
+	RawObject interface{} `json:"-"`
 }

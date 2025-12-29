@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+providers:
+  bitbucket:
+    enabled: true
+    path: /webhooks/bitbucket
+    secret: ${BITBUCKET_WEBHOOK_SECRET}
+
+watermill:
+  driver: gochannel
+
+rules:
+  - when: pullrequest.state == "OPEN"
+    emit: bitbucket.pr.opened
+
+  - when: event_key == "repo:push"
+    emit: bitbucket.repo.push

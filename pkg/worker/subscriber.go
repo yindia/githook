@@ -19,6 +19,7 @@ import (
 	stan "github.com/nats-io/stan.go"
 )
 
+// NewFromConfig creates a new worker from a subscriber configuration.
 func NewFromConfig(cfg SubscriberConfig, opts ...Option) (*Worker, error) {
 	sub, err := BuildSubscriber(cfg)
 	if err != nil {
@@ -28,6 +29,8 @@ func NewFromConfig(cfg SubscriberConfig, opts ...Option) (*Worker, error) {
 	return New(opts...), nil
 }
 
+// BuildSubscriber creates a new Watermill subscriber from a configuration.
+// It can create a single subscriber or a multi-subscriber that combines multiple drivers.
 func BuildSubscriber(cfg SubscriberConfig) (message.Subscriber, error) {
 	logger := watermill.NewStdLogger(false, false)
 
