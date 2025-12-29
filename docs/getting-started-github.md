@@ -1,14 +1,16 @@
 # Getting Started: GitHub
 
-This guide walks through running the GitHub webhook example and creating a GitHub App for real payloads.
+Let us build a working GitHub webhook pipeline end to end: start the broker stack, run the server, run a worker, and then plug in a real GitHub App so events flow from GitHub to your code.
 
-## 1) Prerequisites
+## Before you begin
+
+You will need:
 
 - Go 1.21+
 - Docker + Docker Compose
 - A GitHub account
 
-## 2) Start the local brokers
+## Step 1: start the local broker stack
 
 From the repo root:
 
@@ -16,11 +18,11 @@ From the repo root:
 docker compose up -d
 ```
 
-This starts RabbitMQ, NATS Streaming, Kafka/Zookeeper, and Postgres for local development.
+This boots RabbitMQ, NATS Streaming, Kafka/Zookeeper, and Postgres. The server will publish to them based on your configuration.
 
-## 3) Run the server
+## Step 2: run the webhook server
 
-Start the webhook server with the GitHub example config:
+Use the GitHub example config:
 
 ```bash
 go run ./main.go -config example/github/app.yaml
@@ -28,44 +30,46 @@ go run ./main.go -config example/github/app.yaml
 
 You should see logs showing the server is listening on `:8080`.
 
-## 4) Run the worker
+## Step 3: run the worker
 
-In another terminal, run the GitHub worker example:
+In another terminal:
 
 ```bash
 go run ./example/github/worker/main.go
 ```
 
-The worker subscribes to the topics emitted by the GitHub example rules and logs matched events.
+The worker subscribes to topics emitted by the GitHub rules and logs each match.
 
-## 5) Send a test webhook
+## Step 4: send a local test event
 
-Use the bundled script to send a local GitHub pull_request event:
+Try a simulated pull request event:
 
 ```bash
 ./scripts/send_webhook.sh github pull_request example/github/pull_request.json
 ```
 
-You should see:
+Expected result:
 
-- The server log an event match and publish to a topic.
-- The worker log the event handling.
+- The server logs a rule match and publishes a topic.
+- The worker logs that it handled the topic.
 
-## 6) Create a GitHub App (for real webhooks)
+At this point, the full local loop works. Now let us wire real GitHub traffic into it.
 
-1. Open GitHub: **Settings** -> **Developer settings** -> **GitHub Apps** -> **New GitHub App**.
-2. App name: `githooks-local` (or any name you like).
+## Step 5: create a GitHub App
+
+1. GitHub: **Settings** -> **Developer settings** -> **GitHub Apps** -> **New GitHub App**.
+2. App name: `githooks-local` (any name is fine).
 3. Homepage URL: `http://localhost:8080`.
 4. Webhook URL: `http://localhost:8080/webhooks/github`.
-5. Webhook secret: choose a random string. Save it.
+5. Webhook secret: pick a random string and save it.
 6. Permissions:
-   - Repository permissions: set **Pull requests** to **Read-only** (add more if needed).
+   - Repository permissions: set **Pull requests** to **Read-only**.
 7. Subscribe to events:
    - `Pull request`
    - `Push` (optional)
 8. Create the app.
 
-### Install the GitHub App
+### Install the app on a repo
 
 1. In the app settings, click **Install App**.
 2. Choose a test repository and install.
@@ -89,11 +93,11 @@ export GITHUB_WEBHOOK_SECRET="your-secret"
 go run ./main.go -config example/github/app.yaml
 ```
 
-Now GitHub will send real webhook events to your local server.
+GitHub will now deliver real webhook events to your local server.
 
-## 7) Optional: use ngrok for remote webhooks
+## Step 6: expose localhost with ngrok (optional)
 
-If GitHub needs to reach your machine from the internet:
+If GitHub cannot reach your machine:
 
 ```bash
 ngrok http 8080
@@ -101,7 +105,7 @@ ngrok http 8080
 
 Update the GitHub App webhook URL to the ngrok URL.
 
-## 8) Troubleshooting
+## Troubleshooting
 
 - `missing X-Hub-Signature`: your webhook secret does not match.
 - `no matching rules`: ensure rules in `example/github/app.yaml` match your payload.
