@@ -201,6 +201,17 @@ wk := worker.New(
 )
 ```
 
+Watermill middleware (adapter):
+```go
+import wm "github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
+wk := worker.New(
+  worker.WithSubscriber(sub),
+  worker.WithTopics("pr.opened.ready"),
+  worker.WithMiddleware(worker.MiddlewareFromWatermill(wm.Retry{MaxRetries: 3}.Middleware)),
+)
+```
+
 ## Configuration
 
 Githooks is configured using a YAML file (for local dev, use `config.yaml`).
@@ -272,11 +283,11 @@ providers:
   gitlab:
     enabled: false
     path: /webhooks/gitlab
-    secret: ${GITLAB_WEBHOOK_SECRET}
+    secret: ${GITLAB_WEBHOOK_SECRET} # optional
   bitbucket:
     enabled: false
     path: /webhooks/bitbucket
-    secret: ${BITBUCKET_WEBHOOK_SECRET}
+    secret: ${BITBUCKET_WEBHOOK_SECRET} # optional (X-Hook-UUID)
 ```
 
 ### Supported Providers

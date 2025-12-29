@@ -40,7 +40,11 @@ var bitbucketEvents = []bitbucket.Event{
 }
 
 func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger) (*BitbucketHandler, error) {
-	hook, err := bitbucket.New(bitbucket.Options.UUID(secret))
+	options := make([]bitbucket.Option, 0, 1)
+	if secret != "" {
+		options = append(options, bitbucket.Options.UUID(secret))
+	}
+	hook, err := bitbucket.New(options...)
 	if err != nil {
 		return nil, err
 	}

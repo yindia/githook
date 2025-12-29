@@ -35,7 +35,11 @@ var gitlabEvents = []gitlab.Event{
 }
 
 func NewGitLabHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger) (*GitLabHandler, error) {
-	hook, err := gitlab.New(gitlab.Options.Secret(secret))
+	options := make([]gitlab.Option, 0, 1)
+	if secret != "" {
+		options = append(options, gitlab.Options.Secret(secret))
+	}
+	hook, err := gitlab.New(options...)
 	if err != nil {
 		return nil, err
 	}
