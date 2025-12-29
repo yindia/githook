@@ -83,6 +83,8 @@ Docs:
 - [Driver configuration](docs/drivers.md)
 - [Event compatibility](docs/events.md)
 - [Getting started (GitHub)](docs/getting-started-github.md)
+- [Getting started (GitLab)](docs/getting-started-gitlab.md)
+- [Getting started (Bitbucket)](docs/getting-started-bitbucket.md)
 - [Rules engine](docs/rules.md)
 - [Observability](docs/observability.md)
 - [Webhook setup](docs/webhooks.md)
