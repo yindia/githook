@@ -177,15 +177,15 @@ Name:     pull_request, push, ...
 Data:     flattened payload fields used by rules
 
 Rules use JSONPath for field access and govaluate for boolean logic:
-- `$.pull_request.draft == false`
-- `$.pull_request.commits[0].created == true`
-- `$.pull_request[?(@.draft==false)][0].draft == false`
+- `$.pull_requests.draft == false`
+- `$.pull_requests.commits[0].created == true`
+- `$.pull_requests[0].draft == false`
 Bare identifiers are treated as root JSONPath (e.g., `action` becomes `$.action`, `pull_request.draft` becomes `$.pull_request.draft`).
 
 Flattened data is still included in the emitted event:
-- `pull_request.draft`
-- `pull_request.commits[0].created`
-- `pull_request.commits[]` (full array)
+- `pull_requests.draft`
+- `pull_requests.commits[0].created`
+- `pull_requests.commits[]` (full array)
 
 Rule driver targeting:
 - `drivers` is optional on each rule.

@@ -117,11 +117,19 @@ func resolveRuleParams(event Event, vars []string, varMap map[string]string) (ma
 
 func resolveJSONPath(event Event, path string) (interface{}, error) {
 	if event.RawObject != nil {
-		return jsonpath.Get(path, event.RawObject)
+		value, err := jsonpath.Get(path, event.RawObject)
+		if err != nil {
+			return nil, err
+		}
+		return normalizeJSONPathResult(value), nil
 	}
 	if len(event.RawPayload) == 0 {
 		if event.Data != nil {
-			return jsonpath.Get(path, event.Data)
+			value, err := jsonpath.Get(path, event.Data)
+			if err != nil {
+				return nil, err
+			}
+			return normalizeJSONPathResult(value), nil
 		}
 		return nil, nil
 	}
@@ -129,7 +137,25 @@ func resolveJSONPath(event Event, path string) (interface{}, error) {
 	if err := json.Unmarshal(event.RawPayload, &raw); err != nil {
 		return nil, err
 	}
-	return jsonpath.Get(path, raw)
+	value, err := jsonpath.Get(path, raw)
+	if err != nil {
+		return nil, err
+	}
+	return normalizeJSONPathResult(value), nil
+}
+
+func normalizeJSONPathResult(value interface{}) interface{} {
+	items, ok := value.([]interface{})
+	if !ok {
+		return value
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	if len(items) == 1 {
+		return items[0]
+	}
+	return items
 }
 
 func rewriteExpression(expr string) (string, map[string]string) {

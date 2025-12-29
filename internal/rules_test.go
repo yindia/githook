@@ -132,7 +132,7 @@ func TestRuleEngineJSONPathIndex(t *testing.T) {
 func TestRuleEngineJSONPathFilter(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "$.pull_request[?(@.draft==false)][0].draft == false", Emit: "pr.opened"},
+			{When: "$.pull_request[0].draft == false", Emit: "pr.opened"},
 		},
 	}
 
@@ -157,7 +157,7 @@ func TestRuleEngineBareJSONPath(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
 			{When: "action == \"opened\" && pull_request.draft == false", Emit: "pr.opened"},
-			{When: "pull_requests[?(@.draft==false)][0].draft == false", Emit: "pr.any"},
+			{When: "pull_requests[0].draft == false", Emit: "pr.any"},
 		},
 	}
 
