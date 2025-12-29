@@ -134,6 +134,65 @@ if err != nil {
 }
 ```
 
+More worker examples:
+
+Single driver override (ignore `watermill.drivers` and subscribe only to AMQP):
+```go
+cfg, err := worker.LoadSubscriberConfig("app.docker.yaml")
+if err != nil {
+  log.Fatal(err)
+}
+cfg.Driver = "amqp"
+cfg.Drivers = nil
+
+sub, err := worker.BuildSubscriber(cfg)
+if err != nil {
+  log.Fatal(err)
+}
+wk := worker.New(worker.WithSubscriber(sub))
+wk.HandleTopic("pr.merged", func(ctx context.Context, evt *worker.Event) error {
+  log.Printf("driver=%s topic=%s", evt.Metadata["driver"], evt.Topic)
+  return nil
+})
+```
+
+Route by event type:
+```go
+wk := worker.New(
+  worker.WithSubscriber(sub),
+  worker.WithTopics("pr.opened.ready", "pr.merged"),
+)
+
+wk.HandleType("pull_request", func(ctx context.Context, evt *worker.Event) error {
+  log.Printf("type=%s provider=%s", evt.Type, evt.Provider)
+  return nil
+})
+```
+
+Retry + middleware:
+```go
+type retryTwice struct{}
+func (retryTwice) OnError(ctx context.Context, evt *worker.Event, err error) worker.RetryDecision {
+  return worker.RetryDecision{Retry: true, Nack: true}
+}
+
+logMW := func(next worker.Handler) worker.Handler {
+  return func(ctx context.Context, evt *worker.Event) error {
+    log.Printf("start topic=%s", evt.Topic)
+    err := next(ctx, evt)
+    log.Printf("finish topic=%s err=%v", evt.Topic, err)
+    return err
+  }
+}
+
+wk := worker.New(
+  worker.WithSubscriber(sub),
+  worker.WithTopics("pr.opened.ready"),
+  worker.WithRetry(retryTwice{}),
+  worker.WithMiddleware(logMW),
+)
+```
+
 ## Configuration
 
 Githooks is configured using a `config.yaml` file. The Docker Compose setup uses `app.docker.yaml` as an example which gets mapped to `config.yaml` inside the container.
