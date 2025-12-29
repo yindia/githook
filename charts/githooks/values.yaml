@@ -20,6 +20,23 @@ affinity: {}
 webhook:
   githubSecret: ""
 
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+pdb:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: ""
+
 configYaml: |-
   server:
     port: 8080
