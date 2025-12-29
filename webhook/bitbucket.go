@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -75,10 +76,22 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := h.hook.Parse(r, bitbucketEvents...)
 	if err != nil {
-		logger.Printf("bitbucket parse failed: %v", err)
-		internal.IncParseError("bitbucket")
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		if errors.Is(err, bitbucket.ErrMissingHookUUIDHeader) {
+			logger.Printf("bitbucket parse warning: %v; skipping UUID verification", err)
+			r.Body = io.NopCloser(bytes.NewReader(rawBody))
+			unverified, fallbackErr := bitbucket.New()
+			if fallbackErr == nil {
+				payload, err = unverified.Parse(r, bitbucketEvents...)
+			} else {
+				err = fallbackErr
+			}
+		}
+		if err != nil {
+			logger.Printf("bitbucket parse failed: %v", err)
+			internal.IncParseError("bitbucket")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
 	eventName := r.Header.Get("X-Event-Key")

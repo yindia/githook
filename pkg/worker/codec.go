@@ -35,13 +35,32 @@ func (DefaultCodec) Decode(topic string, msg *message.Message) (*Event, error) {
 		metadata[key] = value
 	}
 
+	provider := env.Provider
+	if provider == "" {
+		provider = msg.Metadata.Get("provider")
+	}
+	eventName := env.Name
+	if eventName == "" {
+		eventName = msg.Metadata.Get("event")
+	}
+
+	normalized := env.Data
+	if normalized == nil {
+		var raw interface{}
+		if err := json.Unmarshal(msg.Payload, &raw); err == nil {
+			if object, ok := raw.(map[string]interface{}); ok {
+				normalized = object
+			}
+		}
+	}
+
 	payload := json.RawMessage(msg.Payload)
 	return &Event{
-		Provider:   env.Provider,
-		Type:       env.Name,
+		Provider:   provider,
+		Type:       eventName,
 		Topic:      topic,
 		Metadata:   metadata,
 		Payload:    payload,
-		Normalized: env.Data,
+		Normalized: normalized,
 	}, nil
 }

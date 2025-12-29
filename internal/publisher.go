@@ -236,16 +236,26 @@ func retryPublisherBuild(build func() (Publisher, error)) (Publisher, error) {
 
 // Publish sends an event to a topic using the underlying Watermill publisher.
 func (w *watermillPublisher) Publish(ctx context.Context, topic string, event Event) error {
-	payload, err := json.Marshal(event)
-	if err != nil {
-		return err
+	payload := event.RawPayload
+	if len(payload) == 0 {
+		var err error
+		payload, err = json.Marshal(event)
+		if err != nil {
+			return err
+		}
 	}
 
 	msg := message.NewMessage(watermill.NewUUID(), payload)
+	if msg.Metadata == nil {
+		msg.Metadata = message.Metadata{}
+	}
+	if event.Provider != "" {
+		msg.Metadata.Set("provider", event.Provider)
+	}
+	if event.Name != "" {
+		msg.Metadata.Set("event", event.Name)
+	}
 	if event.RequestID != "" {
-		if msg.Metadata == nil {
-			msg.Metadata = message.Metadata{}
-		}
 		msg.Metadata.Set("request_id", event.RequestID)
 	}
 	return w.publisher.Publish(topic, msg)

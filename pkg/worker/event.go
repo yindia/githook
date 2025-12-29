@@ -14,7 +14,7 @@ type Event struct {
 	Metadata map[string]string `json:"metadata"`
 	// Payload is the raw JSON payload of the message.
 	Payload json.RawMessage `json:"payload"`
-	// Normalized is the flattened JSON payload of the event.
+	// Normalized is the decoded JSON payload of the event.
 	Normalized map[string]interface{} `json:"normalized"`
 	// Client is an API client for the provider, if available.
 	Client interface{} `json:"-"`
