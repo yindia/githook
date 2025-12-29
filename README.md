@@ -438,9 +438,6 @@ flowchart LR
   F --> H[Workers/Consumers]
 ```
 
-```
-Webhook Provider -> go-playground/webhooks -> Adapter -> Normalized Event -> Rule Engine -> Watermill Publisher
-```
 
 ## Development
 
