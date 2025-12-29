@@ -211,6 +211,14 @@ Helm charts live in `charts/`:
 - `charts/githooks` deploys the webhook server.
 - `charts/githooks-worker` deploys a worker that consumes Watermill topics.
 
+Add the repo and install:
+```sh
+helm repo add githooks https://yindia.github.io/githooks
+helm repo update
+helm install githooks githooks/githooks
+helm install githooks-worker githooks/githooks-worker
+```
+
 Install locally:
 ```sh
 helm install githooks ./charts/githooks
@@ -218,6 +226,17 @@ helm install githooks-worker ./charts/githooks-worker
 ```
 
 For chart-specific values, see `charts/githooks/README.md` and `charts/githooks-worker/README.md`.
+
+## Helm Chart Release (gh-pages)
+
+Use GitHub Pages with chart-releaser to publish the `charts/` directory as a Helm repo.
+
+1. Enable GitHub Pages for the `gh-pages` branch.
+2. Push a tag like `chart-0.1.0` to trigger `.github/workflows/helm-release.yaml`.
+
+Retry release:
+- If a tag already exists, create a new tag (e.g., `chart-0.1.1`).
+- If a run failed midway, delete the GitHub release and re-run the workflow.
 
 ### Provider Configuration
 Providers define how Githooks receives webhook events.
