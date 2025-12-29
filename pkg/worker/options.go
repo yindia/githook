@@ -12,7 +12,13 @@ func WithSubscriber(sub message.Subscriber) Option {
 
 func WithTopics(topics ...string) Option {
 	return func(w *Worker) {
-		w.topics = append(w.topics, topics...)
+		for _, topic := range topics {
+			if topic == "" {
+				continue
+			}
+			w.topics = append(w.topics, topic)
+			w.allowedTopics[topic] = struct{}{}
+		}
 	}
 }
 

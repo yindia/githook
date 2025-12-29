@@ -21,6 +21,7 @@ type Worker struct {
 	middleware     []Middleware
 	clientProvider ClientProvider
 	listeners      []Listener
+	allowedTopics  map[string]struct{}
 }
 
 func New(opts ...Option) *Worker {
@@ -31,6 +32,7 @@ func New(opts ...Option) *Worker {
 		concurrency:   1,
 		topicHandlers: make(map[string]Handler),
 		typeHandlers:  make(map[string]Handler),
+		allowedTopics: make(map[string]struct{}),
 	}
 	for _, opt := range opts {
 		opt(w)
@@ -41,6 +43,12 @@ func New(opts ...Option) *Worker {
 func (w *Worker) HandleTopic(topic string, h Handler) {
 	if h == nil || topic == "" {
 		return
+	}
+	if len(w.allowedTopics) > 0 {
+		if _, ok := w.allowedTopics[topic]; !ok {
+			w.logger.Printf("handler topic not subscribed: %s", topic)
+			return
+		}
 	}
 	w.topicHandlers[topic] = h
 	w.topics = append(w.topics, topic)

@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+providers:
+  github:
+    enabled: true
+    path: /webhooks/github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+  gitlab:
+    enabled: false
+    path: /webhooks/gitlab
+    secret: ${GITLAB_WEBHOOK_SECRET}
+  bitbucket:
+    enabled: false
+    path: /webhooks/bitbucket
+    secret: ${BITBUCKET_WEBHOOK_SECRET}
+
+watermill:
+  driver: amqp
+  amqp:
+    url: amqp://guest:guest@localhost:5672/
+    mode: durable_queue
+
+rules:
+  - when: action == "opened" && pull_request.draft == false
+    emit: pr.opened.ready
+
+  - when: action == "closed" && pull_request.merged == true
+    emit: pr.merged
