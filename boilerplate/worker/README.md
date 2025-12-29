@@ -56,3 +56,13 @@ Build and run the worker container:
 docker build -f boilerplate/worker/Dockerfile -t githooks-worker .
 docker run --rm -e GITHUB_WEBHOOK_SECRET=devsecret githooks-worker -config /app/config.yaml
 ```
+
+## Helm
+You can deploy a worker using the Helm chart:
+
+```sh
+helm install githooks-worker ./charts/githooks-worker \
+  --set image.repository=ghcr.io/your-org/your-worker \
+  --set image.tag=latest \
+  --set-file configYaml=boilerplate/worker/config.yaml
+```
