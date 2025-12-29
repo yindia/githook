@@ -192,6 +192,9 @@ Rule driver targeting:
 - When omitted, the event is published to all configured drivers.
 - When set, only those drivers receive the event.
 
+Rules strict mode:
+- Set `rules_strict: true` to skip rule evaluation when any JSONPath is missing.
+
 ## Watermill Drivers
 gochannel:
 ```yaml

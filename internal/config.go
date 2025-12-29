@@ -19,8 +19,9 @@ type AppConfig struct {
 }
 
 type Config struct {
-	AppConfig `yaml:",inline"`
-	Rules     []Rule `yaml:"rules"`
+	AppConfig   `yaml:",inline"`
+	Rules       []Rule `yaml:"rules"`
+	RulesStrict bool   `yaml:"rules_strict"`
 }
 
 type ProviderConfig struct {
@@ -107,12 +108,14 @@ func LoadConfig(path string) (Config, error) {
 		return cfg, err
 	}
 	cfg.Rules = normalized
+	cfg.RulesStrict = cfg.RulesStrict || false
 
 	return cfg, nil
 }
 
 type RulesConfig struct {
-	Rules []Rule `yaml:"rules"`
+	Rules  []Rule `yaml:"rules"`
+	Strict bool   `yaml:"rules_strict"`
 }
 
 func LoadRulesConfig(path string) (RulesConfig, error) {

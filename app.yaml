@@ -22,3 +22,5 @@ rules:
 
   - when: $.action == "synchronize"
     emit: pr.code.updated
+
+rules_strict: false

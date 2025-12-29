@@ -177,3 +177,28 @@ func TestRuleEngineBareJSONPath(t *testing.T) {
 		t.Fatalf("expected 2 matches, got %d", len(matches))
 	}
 }
+
+func TestRuleEngineStrictMissing(t *testing.T) {
+	cfg := RulesConfig{
+		Rules: []Rule{
+			{When: "missing_field == true", Emit: "never"},
+		},
+		Strict: true,
+	}
+
+	engine, err := NewRuleEngine(cfg)
+	if err != nil {
+		t.Fatalf("new rule engine: %v", err)
+	}
+
+	event := Event{
+		Provider:   "github",
+		Name:       "pull_request",
+		RawPayload: []byte(`{"action":"opened"}`),
+	}
+
+	matches := engine.Evaluate(event)
+	if len(matches) != 0 {
+		t.Fatalf("expected no matches in strict mode, got %d", len(matches))
+	}
+}

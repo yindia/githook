@@ -20,7 +20,10 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	ruleEngine, err := internal.NewRuleEngine(internal.RulesConfig{Rules: config.Rules})
+	ruleEngine, err := internal.NewRuleEngine(internal.RulesConfig{
+		Rules:  config.Rules,
+		Strict: config.RulesStrict,
+	})
 	if err != nil {
 		log.Fatalf("compile rules: %v", err)
 	}

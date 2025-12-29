@@ -24,7 +24,8 @@ type compiledRule struct {
 }
 
 type RuleEngine struct {
-	rules []compiledRule
+	rules  []compiledRule
+	strict bool
 }
 
 type RuleMatch struct {
@@ -49,7 +50,7 @@ func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
 		})
 	}
 
-	return &RuleEngine{rules: rules}, nil
+	return &RuleEngine{rules: rules, strict: cfg.Strict}, nil
 }
 
 func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
@@ -59,8 +60,12 @@ func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
 
 	matches := make([]RuleMatch, 0, 1)
 	for _, rule := range r.rules {
-		params := resolveRuleParams(event, rule.vars, rule.varMap)
+		params, missing := resolveRuleParams(event, rule.vars, rule.varMap)
 		log.Printf("rule debug: when=%q params=%v", rule.expr.String(), params)
+		if r.strict && len(missing) > 0 {
+			log.Printf("rule strict missing params: %v", missing)
+			continue
+		}
 		result, err := rule.expr.Evaluate(params)
 		if err != nil {
 			log.Printf("rule eval failed: %v", err)
@@ -74,21 +79,28 @@ func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
 	return matches
 }
 
-func resolveRuleParams(event Event, vars []string, varMap map[string]string) map[string]interface{} {
+func resolveRuleParams(event Event, vars []string, varMap map[string]string) (map[string]interface{}, []string) {
 	if len(vars) == 0 {
 		if len(event.RawPayload) == 0 {
-			return event.Data
+			return event.Data, nil
 		}
-		return nil
+		return nil, nil
 	}
 
 	params := make(map[string]interface{}, len(vars))
+	missing := make([]string, 0)
 	for _, name := range vars {
 		if path, ok := varMap[name]; ok {
 			value, err := resolveJSONPath(event, path)
 			if err != nil {
+				missing = append(missing, path)
+				log.Printf("rule warn: jsonpath error path=%s err=%v", path, err)
 				params[name] = nil
 			} else {
+				if value == nil {
+					missing = append(missing, path)
+					log.Printf("rule warn: jsonpath no match path=%s", path)
+				}
 				params[name] = value
 			}
 			continue
@@ -96,10 +108,11 @@ func resolveRuleParams(event Event, vars []string, varMap map[string]string) map
 		if value, ok := event.Data[name]; ok {
 			params[name] = value
 		} else {
+			missing = append(missing, name)
 			params[name] = nil
 		}
 	}
-	return params
+	return params, missing
 }
 
 func resolveJSONPath(event Event, path string) (interface{}, error) {
