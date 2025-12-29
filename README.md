@@ -427,6 +427,17 @@ rules:
 -   Set `rules_strict: true` in your `config.yaml` to skip rule evaluation if any JSONPath expression within a rule's `when` clause is missing from the event data.
 
 ## Architecture
+```mermaid
+flowchart LR
+  A[Webhook Provider\nGitHub/GitLab/Bitbucket] --> B[go-playground/webhooks]
+  B --> C[Provider Adapter]
+  C --> D[Normalized Event]
+  D --> E[Rule Engine]
+  E --> F[Watermill Publisher]
+  F --> G[AMQP/Kafka/NATS/SQL/HTTP]
+  F --> H[Workers/Consumers]
+```
+
 ```
 Webhook Provider -> go-playground/webhooks -> Adapter -> Normalized Event -> Rule Engine -> Watermill Publisher
 ```
