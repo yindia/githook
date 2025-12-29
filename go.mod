@@ -1,6 +1,6 @@
 module githooks
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
@@ -13,8 +13,11 @@ require (
 	github.com/ThreeDotsLabs/watermill-sql v1.4.0
 	github.com/go-playground/webhooks/v6 v6.2.0
 	github.com/go-sql-driver/mysql v1.4.1
+	github.com/jackc/pgx/v5 v5.8.0
 	github.com/lib/pq v1.3.0
 	github.com/nats-io/stan.go v0.10.0
+	github.com/riverqueue/river v0.29.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.29.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -39,6 +42,9 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/raft v1.7.3 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
@@ -50,14 +56,25 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pierrec/lz4 v2.2.6+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962 // indirect
 	github.com/renstrom/shortuuid v3.0.0+incompatible // indirect
+	github.com/riverqueue/river/riverdriver v0.29.0 // indirect
+	github.com/riverqueue/river/rivershared v0.29.0 // indirect
+	github.com/riverqueue/river/rivertype v0.29.0 // indirect
 	github.com/streadway/amqp v1.0.0 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	go.etcd.io/bbolt v1.4.3 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
+	go.uber.org/goleak v1.3.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/dnsutils.v1 v1.0.1 // indirect

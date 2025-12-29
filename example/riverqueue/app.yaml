@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+providers:
+  github:
+    enabled: true
+    path: /webhooks/github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+
+watermill:
+  driver: riverqueue
+  riverqueue:
+    driver: postgres
+    dsn: postgres://githooks:githooks@localhost:5433/githooks?sslmode=disable
+    table: river_job
+    queue: my_custom_queue
+    kind: my_job
+    max_attempts: 25
+    priority: 2
+    tags: ["tag1", "tag2", "tag3"]
+
+rules:
+  - when: action == "opened" && pull_request.draft == false
+    emit: pr.opened.ready

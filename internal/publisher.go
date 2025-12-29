@@ -169,6 +169,12 @@ func newSinglePublisher(cfg WatermillConfig, driver string) (Publisher, error) {
 			publisher: pub,
 			closeFn:   db.Close,
 		}, nil
+	case "riverqueue":
+		pub, err := newRiverQueuePublisher(cfg.RiverQueue)
+		if err != nil {
+			return nil, err
+		}
+		return pub, nil
 	default:
 		if factory, ok := publisherFactories[strings.ToLower(driver)]; ok {
 			pub, closeFn, err := factory(cfg, logger)

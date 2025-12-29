@@ -12,6 +12,8 @@ import (
 
 	"githooks/internal"
 	"githooks/webhook"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {

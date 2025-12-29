@@ -34,14 +34,15 @@ type ProviderConfig struct {
 }
 
 type WatermillConfig struct {
-	Driver    string          `yaml:"driver"`
-	Drivers   []string        `yaml:"drivers"`
-	GoChannel GoChannelConfig `yaml:"gochannel"`
-	Kafka     KafkaConfig     `yaml:"kafka"`
-	NATS      NATSConfig      `yaml:"nats"`
-	AMQP      AMQPConfig      `yaml:"amqp"`
-	SQL       SQLConfig       `yaml:"sql"`
-	HTTP      HTTPConfig      `yaml:"http"`
+	Driver     string           `yaml:"driver"`
+	Drivers    []string         `yaml:"drivers"`
+	GoChannel  GoChannelConfig  `yaml:"gochannel"`
+	Kafka      KafkaConfig      `yaml:"kafka"`
+	NATS       NATSConfig       `yaml:"nats"`
+	AMQP       AMQPConfig       `yaml:"amqp"`
+	SQL        SQLConfig        `yaml:"sql"`
+	HTTP       HTTPConfig       `yaml:"http"`
+	RiverQueue RiverQueueConfig `yaml:"riverqueue"`
 }
 
 type GoChannelConfig struct {
@@ -76,6 +77,17 @@ type SQLConfig struct {
 type HTTPConfig struct {
 	BaseURL string `yaml:"base_url"`
 	Mode    string `yaml:"mode"`
+}
+
+type RiverQueueConfig struct {
+	Driver      string   `yaml:"driver"`
+	DSN         string   `yaml:"dsn"`
+	Table       string   `yaml:"table"`
+	Queue       string   `yaml:"queue"`
+	Kind        string   `yaml:"kind"`
+	MaxAttempts int      `yaml:"max_attempts"`
+	Priority    int      `yaml:"priority"`
+	Tags        []string `yaml:"tags"`
 }
 
 func LoadAppConfig(path string) (AppConfig, error) {
@@ -161,6 +173,18 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.Watermill.HTTP.Mode == "" {
 		cfg.Watermill.HTTP.Mode = "topic_url"
+	}
+	if cfg.Watermill.RiverQueue.Table == "" {
+		cfg.Watermill.RiverQueue.Table = "river_job"
+	}
+	if cfg.Watermill.RiverQueue.Queue == "" {
+		cfg.Watermill.RiverQueue.Queue = "default"
+	}
+	if cfg.Watermill.RiverQueue.Kind == "" {
+		cfg.Watermill.RiverQueue.Kind = "githooks.event"
+	}
+	if cfg.Watermill.RiverQueue.MaxAttempts == 0 {
+		cfg.Watermill.RiverQueue.MaxAttempts = 25
 	}
 }
 

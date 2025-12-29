@@ -34,6 +34,10 @@ go run ./example/github/worker/main.go
 Then send GitHub webhooks to:
 `http://localhost:8080/webhooks/github`
 
+Examples:
+- `example/realworld` (multiple workers, single driver)
+- `example/riverqueue` (publish to RiverQueue and consume with River workers)
+
 **Useful endpoints provided by Docker Compose:**
 - RabbitMQ UI: http://localhost:15672 (guest/guest)
 - NATS Streaming: nats://localhost:4222 (cluster id: test-cluster)
@@ -378,6 +382,21 @@ watermill:
     dsn: postgres://user:pass@localhost:5432/dbname?sslmode=disable
     dialect: postgres # or mysql
     auto_initialize_schema: true
+```
+
+**RiverQueue (Postgres):**
+```yaml
+watermill:
+  driver: riverqueue
+  riverqueue:
+    driver: postgres
+    dsn: postgres://user:pass@localhost:5432/dbname?sslmode=disable
+    table: river_job
+    queue: default
+    kind: githooks.event
+    max_attempts: 25
+    priority: 2
+    tags: ["githooks", "webhook"]
 ```
 
 **HTTP:**
