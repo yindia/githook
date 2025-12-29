@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: githooks
+  repository: ghcr.io/yindia/githooks
   tag: "latest"
   pullPolicy: IfNotPresent
 

@@ -238,6 +238,22 @@ Retry release:
 - If a tag already exists, create a new tag (e.g., `chart-0.1.1`).
 - If a run failed midway, delete the GitHub release and re-run the workflow.
 
+## Release Guidelines
+
+Use separate tag schemes for code vs. charts:
+- **Code (Go module + Docker image):** tag `vX.Y.Z` (triggers `.github/workflows/release.yaml`).
+- **Helm charts:** tag `chart-X.Y.Z` (triggers `.github/workflows/helm-release.yaml`).
+
+Chart release steps:
+1. Update `charts/githooks/Chart.yaml` (`version` + `appVersion`).
+2. Update `charts/githooks-worker/Chart.yaml` (`version` + `appVersion`) if needed.
+3. Commit changes.
+4. Tag `chart-X.Y.Z` and push.
+
+Code release steps:
+1. Tag `vX.Y.Z` and push.
+2. Go modules pick up the tag automatically; Docker image is published to GHCR.
+
 ### Provider Configuration
 Providers define how Githooks receives webhook events.
 
