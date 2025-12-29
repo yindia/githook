@@ -1,6 +1,6 @@
 # Rules Engine
 
-Rules use JSONPath for field access and boolean logic for matching. Each matching rule emits a topic and optionally targets specific drivers.
+Rules use JSONPath for field access and boolean logic for matching. Each matching rule emits a topic and can target specific drivers.
 
 ## Syntax
 ```yaml
@@ -22,9 +22,3 @@ rules:
 
 ## Strict Mode
 Set `rules_strict: true` to skip a rule if any JSONPath in its `when` clause is missing.
-
-## Debugging
-Enable logs and look for:
-- `rule debug: when=... params=...`
-- `rule warn: jsonpath no match path=...`
-- `rule eval failed: ...`

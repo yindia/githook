@@ -1,29 +1,28 @@
 # Event Compatibility
 
-Githooks normalizes provider payloads but preserves provider event names in `Event.Name` and `Event.Provider`.
+Githooks preserves provider event names in `Event.Name` and sets `Event.Provider` to the source system.
 
 ## GitHub
 - Header: `X-GitHub-Event`
-- Secret header: `X-Hub-Signature` (SHA-1)
+- Signature: `X-Hub-Signature` (HMAC SHA-1)
 - Path: `/webhooks/github`
 
 ## GitLab
 - Header: `X-Gitlab-Event`
-- Secret header: `X-Gitlab-Token` (optional)
+- Secret: `X-Gitlab-Token` (optional)
 - Path: `/webhooks/gitlab`
 
 ## Bitbucket (Cloud)
 - Header: `X-Event-Key`
-- Secret header: `X-Hook-UUID` (optional)
+- Secret: `X-Hook-UUID` (optional)
 - Path: `/webhooks/bitbucket`
 
-## Compatibility
+## Compatibility Notes
+- GitHub payloads use `pull_request` (singular), not `pull_requests`.
+- Bitbucket events use keys like `pullrequest:created`.
+- GitLab event names come from `X-Gitlab-Event` (e.g., `Merge Request Hook`).
 
-Rules are evaluated against normalized payloads. The incoming payload must match the provider’s expected structure.
-
-Common pitfalls:
-- GitHub uses `pull_request` (singular), not `pull_requests`.
-- Bitbucket event names look like `pullrequest:created`.
-- GitLab event names look like `Merge Request Hook` (from the header).
-
-Use `event provider=... name=... topics=[...]` logs to confirm routing.
+## Debugging
+Check logs for:
+- `event provider=... name=... topics=[...]`
+- `rule debug: when=... params=...`

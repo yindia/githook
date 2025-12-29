@@ -21,7 +21,6 @@ Githooks is a config-driven webhook router for GitHub, GitLab, and Bitbucket. It
   - [Rules](#rules)
 - [Worker SDK](#worker-sdk)
 - [Examples](#examples)
-- [Production Setup](#production-setup)
 - [Helm Charts](#helm-charts)
 - [Releases](#releases)
 - [Development](#development)
@@ -71,12 +70,18 @@ flowchart LR
     Use the provided script to simulate a GitHub `pull_request` event.
 
     ```bash
-    ./example/github/send_webhook.sh
+    ./scripts/send_webhook.sh github pull_request example/github/pull_request.json
     ```
 
     You should see the server log the event and the worker log its "pr.opened.ready" message.
 
 ## Configuration
+
+Docs:
+- `docs/drivers.md` (driver configuration)
+- `docs/events.md` (provider event compatibility)
+- `docs/rules.md` (rules engine)
+- `docs/webhooks.md` (GitHub/GitLab/Bitbucket setup)
 
 Githooks is configured using a single YAML file. Environment variables like `${VAR}` are automatically expanded.
 
@@ -233,14 +238,6 @@ The `example/` directory contains several working examples:
 -   **`example/riverqueue`**: Demonstrates publishing events to a [River](https://github.com/riverqueue/river) job queue.
 -   **`example/gitlab`**: Sample setup for GitLab webhooks.
 -   **`example/bitbucket`**: Sample setup for Bitbucket webhooks.
-
-## Production Setup
-
-For a production environment, consider the following:
-1.  **Use a Persistent Broker**: Use Kafka, AMQP, NATS, or SQL instead of the default GoChannel driver.
-2.  **Secure Webhooks**: Always configure and validate webhook secrets.
-3.  **Use HTTPS**: Deploy the server behind a reverse proxy that provides TLS.
-4.  **For GitHub**: It's recommended to create a GitHub App rather than using repository webhooks for better security and management. Set the webhook URL to `https://<your-domain>/webhooks/github` and subscribe only to the events you need.
 
 ## Helm Charts
 
