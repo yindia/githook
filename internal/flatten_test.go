@@ -2,6 +2,7 @@ package internal
 
 import "testing"
 
+// TestFlattenNestedAndArray tests that a nested map with an array is flattened correctly.
 func TestFlattenNestedAndArray(t *testing.T) {
 	input := map[string]interface{}{
 		"pull_request": map[string]interface{}{

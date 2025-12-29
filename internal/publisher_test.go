@@ -8,21 +8,25 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// stubPublisher is a mock publisher for testing.
 type stubPublisher struct {
 	published int
 	lastTopic string
 }
 
+// Publish increments the published count and records the topic.
 func (s *stubPublisher) Publish(topic string, msgs ...*message.Message) error {
 	s.published += len(msgs)
 	s.lastTopic = topic
 	return nil
 }
 
+// Close is a no-op.
 func (s *stubPublisher) Close() error {
 	return nil
 }
 
+// TestRegisterPublisherDriver tests that a custom publisher driver can be registered and used.
 func TestRegisterPublisherDriver(t *testing.T) {
 	const driverName = "custom"
 
@@ -62,6 +66,7 @@ func TestRegisterPublisherDriver(t *testing.T) {
 	}
 }
 
+// TestHTTPURLTarget tests that the HTTP target URL is constructed correctly.
 func TestHTTPURLTarget(t *testing.T) {
 	url, err := httpTargetURL(HTTPConfig{Mode: "base_url", BaseURL: "http://localhost:8080/hooks"}, "topic")
 	if err != nil {
@@ -72,6 +77,7 @@ func TestHTTPURLTarget(t *testing.T) {
 	}
 }
 
+// TestMultipleDrivers tests that the publisher can be configured to publish to multiple drivers.
 func TestMultipleDrivers(t *testing.T) {
 	orig := publisherFactories["multi-a"]
 	origB := publisherFactories["multi-b"]

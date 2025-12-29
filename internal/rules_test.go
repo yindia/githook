@@ -2,6 +2,7 @@ package internal
 
 import "testing"
 
+// TestRuleEngineEvaluate tests that the rule engine correctly evaluates a simple rule.
 func TestRuleEngineEvaluate(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
@@ -30,6 +31,7 @@ func TestRuleEngineEvaluate(t *testing.T) {
 	}
 }
 
+// TestRuleEngineEvaluateMissingField tests that the rule engine does not match a rule with a missing field.
 func TestRuleEngineEvaluateMissingField(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
@@ -54,6 +56,7 @@ func TestRuleEngineEvaluateMissingField(t *testing.T) {
 	}
 }
 
+// TestRuleEngineWithDrivers tests that the rule engine correctly handles a rule with drivers specified.
 func TestRuleEngineWithDrivers(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
@@ -81,6 +84,7 @@ func TestRuleEngineWithDrivers(t *testing.T) {
 	}
 }
 
+// TestRuleEngineJSONPathDot tests that the rule engine correctly handles a JSONPath expression with dot notation.
 func TestRuleEngineJSONPathDot(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
@@ -105,6 +109,7 @@ func TestRuleEngineJSONPathDot(t *testing.T) {
 	}
 }
 
+// TestRuleEngineJSONPathIndex tests that the rule engine correctly handles a JSONPath expression with an index.
 func TestRuleEngineJSONPathIndex(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
@@ -129,6 +134,7 @@ func TestRuleEngineJSONPathIndex(t *testing.T) {
 	}
 }
 
+// TestRuleEngineJSONPathFilter tests that the rule engine correctly handles a JSONPath expression with a filter.
 func TestRuleEngineJSONPathFilter(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
@@ -153,6 +159,7 @@ func TestRuleEngineJSONPathFilter(t *testing.T) {
 	}
 }
 
+// TestRuleEngineBareJSONPath tests that the rule engine correctly handles a bare JSONPath expression.
 func TestRuleEngineBareJSONPath(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
@@ -178,6 +185,7 @@ func TestRuleEngineBareJSONPath(t *testing.T) {
 	}
 }
 
+// TestRuleEngineStrictMissing tests that the rule engine in strict mode does not match a rule with a missing field.
 func TestRuleEngineStrictMissing(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{

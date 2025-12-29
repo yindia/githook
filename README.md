@@ -68,6 +68,7 @@ Further docs:
 - `docs/drivers.md` (driver configuration)
 - `docs/events.md` (provider event compatibility)
 - `docs/rules.md` (rules engine)
+- `docs/webhooks.md` (GitHub/GitLab/Bitbucket webhook setup)
 
 ### Providers
 ```yaml

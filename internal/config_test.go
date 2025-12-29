@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// TestLoadConfigDefaults tests that the default values are applied correctly when loading a config.
 func TestLoadConfigDefaults(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app.yaml")
@@ -44,6 +45,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 	}
 }
 
+// TestLoadConfigInvalidRule tests that loading a config with an invalid rule returns an error.
 func TestLoadConfigInvalidRule(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
@@ -57,6 +59,7 @@ func TestLoadConfigInvalidRule(t *testing.T) {
 	}
 }
 
+// TestLoadConfigTrimsFields tests that the fields in a rule are trimmed correctly.
 func TestLoadConfigTrimsFields(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
