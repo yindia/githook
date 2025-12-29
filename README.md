@@ -13,14 +13,22 @@ Config-driven webhook router for GitHub (with GitLab/Bitbucket planned). It norm
 ## Quickstart
 
 ### Local Development with Docker Compose
-One command builds and runs the agent on port 8080 with all local drivers enabled via `config.yaml` (which is derived from `app.docker.yaml`):
+Start the local broker stack, then run the server and worker from your machine.
+
+1. Start dependencies:
 ```bash
-docker-compose up --build
+docker compose up -d
 ```
 
-You can override the default webhook secret if needed:
+2. Run the server locally:
 ```bash
-GITHUB_WEBHOOK_SECRET=yoursecret docker-compose up --build
+export GITHUB_WEBHOOK_SECRET=devsecret
+go run ./main.go -config app.docker.yaml
+```
+
+3. Run the worker locally (in another terminal):
+```bash
+go run ./example/github/worker/main.go -config app.docker.yaml
 ```
 
 Then send GitHub webhooks to:
@@ -195,7 +203,7 @@ wk := worker.New(
 
 ## Configuration
 
-Githooks is configured using a `config.yaml` file. The Docker Compose setup uses `app.docker.yaml` as an example which gets mapped to `config.yaml` inside the container.
+Githooks is configured using a YAML file (for local dev, use `app.docker.yaml`).
 
 ### Provider Configuration
 Providers define how Githooks receives webhook events.
