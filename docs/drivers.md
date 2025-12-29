@@ -1,13 +1,11 @@
-# Watermill Driver Configuration
+# Driver Configuration
 
-Githooks uses [Watermill](https://watermill.io/) to publish and subscribe to events. This document details the configuration for various supported drivers.
+Githooks uses [Watermill](https://watermill.io/) for publishing and subscribing. This document describes supported driver settings and common patterns.
 
-## Publisher vs. Worker Configuration
+## Publisher vs Worker
 
-It's important to distinguish between configuring a **publisher** (on the Githooks server) and a **subscriber** (in a worker).
-
--   **Publisher (Server)**: The Githooks server's configuration. You can specify a single default driver or multiple drivers for fan-out.
--   **Subscriber (Worker)**: Your worker's configuration. A worker can subscribe to one or more drivers to consume events.
+- **Publisher (server)**: Use `driver` or `drivers` for fan-out.
+- **Subscriber (worker)**: Use `driver` or `drivers` for fan-in.
 
 ### Publisher (Fan-Out)
 
@@ -153,7 +151,7 @@ watermill:
     tags: ["githooks", "webhook"]
 ```
 
-### HTTP
+### HTTP (Publish-only)
 
 Publishes events via an HTTP POST request. This is a **publish-only** driver and cannot be used by workers.
 

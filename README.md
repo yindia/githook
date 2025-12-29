@@ -2,6 +2,8 @@
 
 Githooks is a config-driven webhook router for GitHub, GitLab, and Bitbucket. It normalizes inbound webhook events, evaluates them against YAML rules, and publishes matching events to [Watermill](https://watermill.io/) topics for downstream consumers.
 
+**Warning:** This project is intended for research and development use only. It is not production-ready.
+
 ## Features
 
 - **Multi-Provider Support**: Handles webhooks from GitHub, GitLab, and Bitbucket.
@@ -78,10 +80,11 @@ flowchart LR
 ## Configuration
 
 Docs:
-- `docs/drivers.md` (driver configuration)
-- `docs/events.md` (provider event compatibility)
-- `docs/rules.md` (rules engine)
-- `docs/webhooks.md` (GitHub/GitLab/Bitbucket setup)
+- [Driver configuration](docs/drivers.md)
+- [Event compatibility](docs/events.md)
+- [Rules engine](docs/rules.md)
+- [Webhook setup](docs/webhooks.md)
+- [SDK client injection](docs/sdk_clients.md)
 
 Githooks is configured using a single YAML file. Environment variables like `${VAR}` are automatically expanded.
 
@@ -109,8 +112,8 @@ providers:
 
 The `watermill` section configures the message broker(s) to publish events to.
 
--   `driver`: (string) The default driver to use if a rule doesn't specify any.
--   `drivers`: (array) A list of drivers to publish to. If set, events are fanned out to all listed drivers by default.
+-   `driver`: (string) Default publisher driver.
+-   `drivers`: (array) Fan-out to all listed drivers by default.
 
 **Single Driver (AMQP)**
 ```yaml
@@ -229,6 +232,10 @@ wk := worker.New(
   worker.WithMiddleware(retryMiddleware),
 )
 ```
+
+## Building Your Own Go App
+
+If you like this model of Git provider webhook management, you can build your own Go app by reusing the same pattern: validate provider signatures, normalize payloads, evaluate rules, then publish to a broker and consume with workers. Use the SDK to wire provider clients into handlers and keep business logic isolated from transport.
 
 ## Examples
 

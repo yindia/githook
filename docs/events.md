@@ -1,6 +1,6 @@
 # Event Compatibility
 
-Githooks preserves provider event names in `Event.Name` and sets `Event.Provider` to the source system.
+Githooks preserves provider event names in `Event.Name` and sets `Event.Provider` to the source system. Rules should target normalized payload fields, not provider-specific envelope fields.
 
 ## GitHub
 - Header: `X-GitHub-Event`

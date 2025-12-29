@@ -1,5 +1,7 @@
 # Webhook Setup
 
+Use provider-native webhook configuration to point to the Githooks endpoints.
+
 ## GitHub (GitHub App)
 1. Create a GitHub App in your org/user settings.
 2. Set webhook URL to `https://<your-domain>/webhooks/github`.

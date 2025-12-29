@@ -1,6 +1,6 @@
 # Rules Engine
 
-Rules use JSONPath for field access and boolean logic for matching. Each matching rule emits a topic and can target specific drivers.
+Rules use JSONPath for field access and boolean logic for matching. Each matching rule emits a topic and can optionally target specific drivers.
 
 ## Syntax
 ```yaml
