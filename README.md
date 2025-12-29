@@ -6,6 +6,7 @@ Githooks is a config-driven webhook router and worker SDK for GitHub, GitLab, an
 
 ## Features
 
+
 - **Multi-Provider Support**: Handles webhooks from GitHub, GitLab, and Bitbucket.
 - **Normalized Events**: Converts provider-specific payloads into a consistent, easy-to-use format.
 - **Powerful Rule Engine**: Filter and route events using YAML-based rules with JSONPath and boolean logic.
