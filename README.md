@@ -1,289 +1,74 @@
 # Githooks
 
-Config-driven webhook router for GitHub (with GitLab/Bitbucket planned). It normalizes inbound webhook events, evaluates them against YAML rules, and publishes matching events to Watermill topics for downstream consumers. This allows for flexible and dynamic event-driven architectures based on your Git activity.
+Githooks is a config-driven webhook router for GitHub, GitLab, and Bitbucket. It normalizes inbound webhook events, evaluates them against YAML rules, and publishes matching events to Watermill topics for downstream consumers.
 
 ## Features
 - Typed webhook parsing via go-playground/webhooks
-- All GitHub webhook events supported
 - Provider-agnostic normalized event model
-- Rule-based routing via govaluate
-- Watermill-backed publishing (gochannel, Kafka, NATS Streaming, AMQP, SQL, HTTP)
-- Stateless by default
+- JSONPath + boolean rule engine
+- Watermill-backed publishing (gochannel, Kafka, NATS Streaming, AMQP, SQL, HTTP, RiverQueue)
+- Stateless and horizontally scalable
 
-## Quickstart
+## Architecture
+```mermaid
+flowchart LR
+  A[Webhook Provider\nGitHub/GitLab/Bitbucket] --> B[go-playground/webhooks]
+  B --> C[Provider Adapter]
+  C --> D[Normalized Event]
+  D --> E[Rule Engine]
+  E --> F[Watermill Publisher]
+  F --> G[AMQP/Kafka/NATS/SQL/HTTP/RiverQueue]
+  F --> H[Workers/Consumers]
+```
 
-### Local Development with Docker Compose
-Start the local broker stack, then run the server and worker from your machine.
+## Getting Started (Local)
 
 1. Start dependencies:
 ```bash
 docker compose up -d
 ```
 
-2. Run the server locally:
+2. Run the server:
 ```bash
 export GITHUB_WEBHOOK_SECRET=devsecret
-go run ./main.go 
+
+go run ./main.go -config app.docker.yaml
 ```
 
-3. Run the worker locally (in another terminal):
+3. Run the worker (another terminal):
 ```bash
-go run ./example/github/worker/main.go
+go run ./example/github/worker/main.go -config app.docker.yaml
 ```
 
-Then send GitHub webhooks to:
-`http://localhost:8080/webhooks/github`
+4. Send a test webhook:
+```bash
+./example/github/send_webhook.sh
+```
 
 Examples:
 - `example/realworld` (multiple workers, single driver)
 - `example/riverqueue` (publish to RiverQueue and consume with River workers)
 
-**Useful endpoints provided by Docker Compose:**
-- RabbitMQ UI: http://localhost:15672 (guest/guest)
-- NATS Streaming: nats://localhost:4222 (cluster id: test-cluster)
-- Kafka: localhost:9092
-- Postgres: postgres://githooks:githooks@localhost:5432/githooks?sslmode=disable
-- MySQL: githooks:githooks@tcp(localhost:3306)/githooks
+## Production Setup
 
-### Testing with a Local Publisher
-Send a test webhook (pull request opened event) to your local Githooks instance:
-```bash
-body='{"action":"opened","pull_request":{"draft":false,"merged":false,"base":{"ref":"main"},"head":{"ref":"feature"}}}'
-sig=$(printf '%s' "$body" | openssl dgst -sha1 -hmac devsecret | sed 's/^.* //')
-curl -X POST http://localhost:8080/webhooks/github \
-  -H "X-GitHub-Event: pull_request" \
-  -H "X-Hub-Signature: sha1=$sig" \
-  -H "Content-Type: application/json" \
-  -d "$body"
-```
-
-### Production Setup (GitHub App)
-For production use, especially with GitHub, consider using a GitHub App:
-1.  Create a GitHub App in your organization/user settings.
-2.  Set the webhook URL to `https://<your-domain>/webhooks/github`.
-3.  Set the webhook secret and expose it as an environment variable (e.g., `GITHUB_WEBHOOK_SECRET`).
-4.  Subscribe to the specific GitHub events you need (e.g., pull requests, pushes).
-5.  Deploy the Githooks service, ensuring the endpoint is publicly reachable.
-
-### SDK (Workers)
-The SDK lets you consume Watermill topics and run user handlers, with per-provider clients and lifecycle listeners.
-
-Example:
-```go
-sub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NewStdLogger(false, false))
-
-githubAppClient := newGitHubAppClient(appID, installationID, privateKeyPEM)
-gitlabClient := newGitLabClient(token)
-bitbucketClient := newBitbucketClient(username, appPassword)
-
-clientProvider := worker.ProviderClients{
-  GitHub: func(ctx context.Context, evt *worker.Event) (interface{}, error) {
-    return githubAppClient, nil
-  },
-  GitLab: func(ctx context.Context, evt *worker.Event) (interface{}, error) {
-    return gitlabClient, nil
-  },
-  Bitbucket: func(ctx context.Context, evt *worker.Event) (interface{}, error) {
-    return bitbucketClient, nil
-  },
-}
-
-worker := worker.New(
-  worker.WithSubscriber(sub),
-  worker.WithTopics("github.pull_request", "github.push"),
-  worker.WithConcurrency(10), // max workers
-  worker.WithRetry(MyRetryPolicy{}),
-  worker.WithClientProvider(clientProvider),
-  worker.WithListener(worker.Listener{
-    OnStart:  func(ctx context.Context) { log.Println("worker started") },
-    OnExit:   func(ctx context.Context) { log.Println("worker stopped") },
-    OnError:  func(ctx context.Context, evt *worker.Event, err error) { log.Printf("error: %v", err) },
-    OnMessageFinish: func(ctx context.Context, evt *worker.Event, err error) {
-      log.Printf("finished provider=%s type=%s err=%v", evt.Provider, evt.Type, err)
-    },
-  }),
-)
-
-worker.HandleTopic("github.pull_request", func(ctx context.Context, evt *worker.Event) error {
-  if evt.Provider != "github" {
-    return nil
-  }
-  if evt.Client != nil {
-    gh := evt.Client.(*github.Client)
-    _ = gh
-  }
-
-  action, _ := evt.Normalized["action"].(string)
-  pr, _ := evt.Normalized["pull_request"].(map[string]interface{})
-  draft, _ := pr["draft"].(bool)
-
-  if action == "opened" && !draft {
-    log.Printf("ready PR event on topic=%s", evt.Topic)
-  }
-  return nil
-})
-
-if err := worker.Run(ctx); err != nil {
-  log.Fatal(err)
-}
-```
-
-Listener hooks are optional and support `OnStart`, `OnExit`, `OnMessageStart`, `OnMessageFinish`, and `OnError` for lifecycle visibility.
-
-Create a subscriber from config (similar to `config.yaml`):
-```go
-cfg := worker.SubscriberConfig{
-  Driver: "amqp",
-  AMQP: worker.AMQPConfig{
-    URL:  "amqp://guest:guest@localhost:5672/",
-    Mode: "durable_queue",
-  },
-}
-
-worker, err := worker.NewFromConfig(cfg, worker.WithTopics("github.pull_request"))
-if err != nil {
-  log.Fatal(err)
-}
-```
-
-More worker examples:
-
-Single driver override (ignore `watermill.drivers` and subscribe only to AMQP):
-```go
-cfg, err := worker.LoadSubscriberConfig("config.yaml")
-if err != nil {
-  log.Fatal(err)
-}
-cfg.Driver = "amqp"
-cfg.Drivers = nil
-
-sub, err := worker.BuildSubscriber(cfg)
-if err != nil {
-  log.Fatal(err)
-}
-wk := worker.New(worker.WithSubscriber(sub))
-wk.HandleTopic("pr.merged", func(ctx context.Context, evt *worker.Event) error {
-  log.Printf("driver=%s topic=%s", evt.Metadata["driver"], evt.Topic)
-  return nil
-})
-```
-
-Route by event type:
-```go
-wk := worker.New(
-  worker.WithSubscriber(sub),
-  worker.WithTopics("pr.opened.ready", "pr.merged"),
-)
-
-wk.HandleType("pull_request", func(ctx context.Context, evt *worker.Event) error {
-  log.Printf("type=%s provider=%s", evt.Type, evt.Provider)
-  return nil
-})
-```
-
-Retry + middleware:
-```go
-type retryTwice struct{}
-func (retryTwice) OnError(ctx context.Context, evt *worker.Event, err error) worker.RetryDecision {
-  return worker.RetryDecision{Retry: true, Nack: true}
-}
-
-logMW := func(next worker.Handler) worker.Handler {
-  return func(ctx context.Context, evt *worker.Event) error {
-    log.Printf("start topic=%s", evt.Topic)
-    err := next(ctx, evt)
-    log.Printf("finish topic=%s err=%v", evt.Topic, err)
-    return err
-  }
-}
-
-wk := worker.New(
-  worker.WithSubscriber(sub),
-  worker.WithTopics("pr.opened.ready"),
-  worker.WithRetry(retryTwice{}),
-  worker.WithMiddleware(logMW),
-)
-```
-
-Watermill middleware (adapter):
-```go
-import wm "github.com/ThreeDotsLabs/watermill/message/router/middleware"
-
-wk := worker.New(
-  worker.WithSubscriber(sub),
-  worker.WithTopics("pr.opened.ready"),
-  worker.WithMiddleware(worker.MiddlewareFromWatermill(wm.Retry{MaxRetries: 3}.Middleware)),
-)
-```
+For GitHub, prefer a GitHub App:
+1. Create a GitHub App.
+2. Set webhook URL to `https://<your-domain>/webhooks/github`.
+3. Set `GITHUB_WEBHOOK_SECRET`.
+4. Subscribe to required events only.
+5. Deploy behind HTTPS.
 
 ## Configuration
 
-Githooks is configured using a YAML file (for local dev, use `config.yaml`).
+Githooks is configured using a YAML file (local dev uses `app.docker.yaml`).
 
-## Helm Charts
-
-Helm charts live in `charts/`:
-- `charts/githooks` deploys the webhook server.
-- `charts/githooks-worker` deploys a worker that consumes Watermill topics.
-
-Add the repo and install:
-```sh
-helm repo add githooks https://yindia.github.io/githooks
-helm repo update
-helm install githooks githooks/githooks
-helm install githooks-worker githooks/githooks-worker
-```
-
-Install locally:
-```sh
-helm install githooks ./charts/githooks
-helm install githooks-worker ./charts/githooks-worker
-```
-
-For chart-specific values, see `charts/githooks/README.md` and `charts/githooks-worker/README.md`.
-
-## Helm Chart Release (gh-pages)
-
-Use GitHub Pages with chart-releaser to publish the `charts/` directory as a Helm repo.
-
-1. Enable GitHub Pages for the `gh-pages` branch.
-2. Push a tag like `chart-0.1.0` to trigger `.github/workflows/helm-release.yaml`.
-
-Retry release:
-- If a tag already exists, create a new tag (e.g., `chart-0.1.1`).
-- If a run failed midway, delete the GitHub release and re-run the workflow.
-
-## Release Guidelines
-
-Use separate tag schemes for code vs. charts:
-- **Code (Go module + Docker image):** tag `vX.Y.Z` (triggers `.github/workflows/release.yaml`).
-- **Helm charts:** tag `chart-X.Y.Z` (triggers `.github/workflows/helm-release.yaml`).
-
-Chart release steps:
-1. Update `charts/githooks/Chart.yaml` (`version` + `appVersion`).
-2. Update `charts/githooks-worker/Chart.yaml` (`version` + `appVersion`) if needed.
-3. Commit changes.
-4. Tag `chart-X.Y.Z` and push.
-
-Code release steps:
-1. Tag `vX.Y.Z` and push.
-2. Go modules pick up the tag automatically; Docker image is published to GHCR.
-
-### Provider Configuration
-Providers define how Githooks receives webhook events.
-
-**GitHub (enabled by default):**
+### Providers
 ```yaml
 providers:
   github:
     enabled: true
     path: /webhooks/github
-    secret: ${GITHUB_WEBHOOK_SECRET} # Use environment variable for secret
-```
-
-**GitLab / Bitbucket:**
-```yaml
-providers:
+    secret: ${GITHUB_WEBHOOK_SECRET}
   gitlab:
     enabled: false
     path: /webhooks/gitlab
@@ -294,77 +79,20 @@ providers:
     secret: ${BITBUCKET_WEBHOOK_SECRET} # optional (X-Hook-UUID)
 ```
 
-### Supported Providers
-| Provider | Status |
-| --- | --- |
-| GitHub | Supported |
-| GitLab | Supported |
-| Bitbucket | Supported |
-
-
 ### Watermill Drivers (Publishers)
-Watermill drivers are used to publish normalized events to various messaging systems. You can configure a single driver or multiple drivers for fan-out.
 
-**Driver fields (publisher config):**
+Driver fields (publisher config):
 - `watermill.driver`: single driver.
 - `watermill.drivers`: list of drivers to publish to (fan-out).
 - `watermill.http`: publish-only (no subscriber).
 - `watermill.sql`: requires DB driver import.
 
-**Driver fields (worker config):**
+Driver fields (worker config):
 - `watermill.driver`: single subscriber driver.
 - `watermill.drivers`: subscribe to multiple drivers (fan-in). Unsupported drivers like `http` are skipped.
 - `watermill.nats.client_id_suffix`: optional suffix for workers to avoid NATS Streaming client ID conflicts.
 
-**Example `config.yaml` (GitHub + AMQP):**
-```yaml
-server:
-  port: 8080
-
-providers:
-  github:
-    enabled: true
-    path: /webhooks/github
-    secret: ${GITHUB_WEBHOOK_SECRET}
-
-watermill:
-  driver: amqp
-  amqp:
-    url: amqp://guest:guest@localhost:5672/
-    mode: durable_queue
-```
-
-**Available Driver Configurations:**
-
-**GoChannel:**
-```yaml
-watermill:
-  driver: gochannel
-  gochannel:
-    output_buffer: 64
-    persistent: false
-    block_publish_until_subscriber_ack: false
-```
-
-**Kafka:**
-```yaml
-watermill:
-  driver: kafka
-  kafka:
-    brokers: ["localhost:9092"]
-```
-
-**NATS Streaming:**
-```yaml
-watermill:
-  driver: nats
-  nats:
-    cluster_id: test-cluster
-    client_id: githooks
-    url: nats://localhost:4222
-```
-
-**AMQP (RabbitMQ):**
+Example (AMQP):
 ```yaml
 watermill:
   driver: amqp
@@ -373,18 +101,7 @@ watermill:
     mode: durable_queue
 ```
 
-**SQL (Postgres/MySQL):**
-```yaml
-watermill:
-  driver: sql
-  sql:
-    driver: postgres # or mysql
-    dsn: postgres://user:pass@localhost:5432/dbname?sslmode=disable
-    dialect: postgres # or mysql
-    auto_initialize_schema: true
-```
-
-**RiverQueue (Postgres):**
+RiverQueue (Postgres):
 ```yaml
 watermill:
   driver: riverqueue
@@ -399,16 +116,7 @@ watermill:
     tags: ["githooks", "webhook"]
 ```
 
-**HTTP:**
-```yaml
-watermill:
-  driver: http
-  http:
-    mode: topic_url # or base_url for fan-out (see below)
-```
-
-**Multiple Drivers (Fan-out):**
-To publish an event to multiple messaging systems, specify `drivers` and configure each one:
+Multiple drivers (fan-out):
 ```yaml
 watermill:
   drivers: [amqp, http]
@@ -420,81 +128,87 @@ watermill:
     base_url: http://localhost:9000/hooks
 ```
 
-### Rule Engine
-Githooks uses a rule engine to filter and route normalized webhook events. Rules are defined in your `config.yaml` file.
+### Rules
 
-**Normalized Event Model:**
-Webhook events are normalized into a common structure:
-- `Provider`: e.g., `github`, `gitlab`, `bitbucket`
-- `Name`: e.g., `pull_request`, `push`, `issue_comment`
-- `Data`: A flattened payload of fields from the original webhook, used for rule evaluation.
-
-**Rule Syntax:**
-Rules use JSONPath for field access and `govaluate` for boolean logic.
-
+Rules use JSONPath + boolean logic:
 ```yaml
 rules:
-  - when: $.action == "opened" && $.pull_request.draft == false
+  - when: action == "opened" && pull_request.draft == false
     emit: pr.opened.ready
-  - when: $.action == "closed" && $.pull_request.merged == true
+  - when: action == "closed" && pull_request.merged == true
     emit: pr.merged
-    drivers: [amqp, http] # Target specific drivers for this rule
+    drivers: [amqp, http]
 ```
 
--   **JSONPath examples**:
-    -   `$.pull_request.draft == false`
-    -   `$.pull_request.commits[0].created == true`
-    -   `$.pull_request[0].draft == false`
--   Bare identifiers are treated as root JSONPath (e.g., `action` becomes `$.action`).
--   Flattened data is still included in the emitted event: `pull_request.draft`, `pull_request.commits[0].created`, `pull_request.commits[]` (full array).
+- Bare identifiers are treated as root JSONPath (e.g., `action` becomes `$.action`).
+- `rules_strict: true` skips evaluation if any JSONPath in a rule is missing.
+- If `drivers` is omitted, the event is published to all configured drivers.
 
-**Rule Driver Targeting:**
--   The `drivers` field is optional on each rule.
--   When `drivers` is omitted, the event is published to all configured Watermill drivers.
--   When `drivers` is specified, the event is only published to those named drivers.
+## SDK (Workers)
 
-**Rules Strict Mode:**
--   Set `rules_strict: true` in your `config.yaml` to skip rule evaluation if any JSONPath expression within a rule's `when` clause is missing from the event data.
+Minimal example:
+```go
+sub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NewStdLogger(false, false))
 
-## Architecture
-```mermaid
-flowchart LR
-  A[Webhook Provider\nGitHub/GitLab/Bitbucket] --> B[go-playground/webhooks]
-  B --> C[Provider Adapter]
-  C --> D[Normalized Event]
-  D --> E[Rule Engine]
-  E --> F[Watermill Publisher]
-  F --> G[AMQP/Kafka/NATS/SQL/HTTP]
-  F --> H[Workers/Consumers]
+wk := worker.New(
+  worker.WithSubscriber(sub),
+  worker.WithTopics("pr.opened.ready"),
+  worker.WithConcurrency(10),
+)
+
+wk.HandleTopic("pr.opened.ready", func(ctx context.Context, evt *worker.Event) error {
+  return nil
+})
+
+if err := wk.Run(ctx); err != nil {
+  log.Fatal(err)
+}
 ```
 
+Watermill middleware adapter:
+```go
+import wm "github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
+wk := worker.New(
+  worker.WithSubscriber(sub),
+  worker.WithTopics("pr.opened.ready"),
+  worker.WithMiddleware(worker.MiddlewareFromWatermill(wm.Retry{MaxRetries: 3}.Middleware)),
+)
+```
+
+## Helm Charts
+
+Helm charts live in `charts/`:
+- `charts/githooks` deploys the webhook server.
+- `charts/githooks-worker` deploys a worker.
+
+Install from GitHub Pages:
+```sh
+helm repo add githooks https://yindia.github.io/githooks
+helm repo update
+helm install githooks githooks/githooks
+helm install githooks-worker githooks/githooks-worker
+```
+
+## Releases
+
+Code release:
+- Tag `vX.Y.Z` to publish `ghcr.io/yindia/githooks` and Go module version.
+
+Chart release:
+- Update `charts/*/Chart.yaml` (`version` + `appVersion`).
+- Tag `chart-X.Y.Z` to publish charts to `gh-pages`.
+
+If a chart tag already exists, create a new tag or delete the GitHub release and re-run the workflow.
 
 ## Development
 
-### Running Tests
-To run all unit and integration tests:
+Run tests:
 ```bash
 go test ./...
 ```
 
-### Custom Watermill Drivers
-You can register custom Watermill drivers at runtime via `internal.RegisterPublisherDriver`. This allows for extending Githooks with support for new messaging systems or custom publishing logic.
-
-**Example Custom Driver (wraps GoChannel):**
-```go
-internal.RegisterPublisherDriver("gochannel-custom", func(cfg internal.WatermillConfig, logger watermill.LoggerAdapter) (message.Publisher, func() error, error) {
-	pub := gochannel.NewGoChannel(
-		gochannel.Config{
-			OutputChannelBuffer: 256,
-			Persistent:          true,
-		},
-		logger,
-	)
-	return pub, nil, nil
-})
-```
-
-## Notes
--   SQL publishing requires importing the appropriate database driver (e.g., `github.com/lib/pq` for Postgres or `github.com/go-sql-driver/mysql` for MySQL) in your application's `main.go` file.
--   Rules are evaluated in order; if multiple rules match an event, multiple topics will be published.
--   The default webhook secret for testing is `devsecret`.
+Notes:
+- SQL publishing requires a DB driver import (`github.com/lib/pq` or `github.com/go-sql-driver/mysql`).
+- Rules are evaluated in order; multiple matches publish multiple topics.
+- Default test secret: `devsecret`.
