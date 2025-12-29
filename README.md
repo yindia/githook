@@ -23,12 +23,12 @@ docker compose up -d
 2. Run the server locally:
 ```bash
 export GITHUB_WEBHOOK_SECRET=devsecret
-go run ./main.go -config app.docker.yaml
+go run ./main.go 
 ```
 
 3. Run the worker locally (in another terminal):
 ```bash
-go run ./example/github/worker/main.go -config app.docker.yaml
+go run ./example/github/worker/main.go
 ```
 
 Then send GitHub webhooks to:
@@ -126,7 +126,7 @@ if err := worker.Run(ctx); err != nil {
 
 Listener hooks are optional and support `OnStart`, `OnExit`, `OnMessageStart`, `OnMessageFinish`, and `OnError` for lifecycle visibility.
 
-Create a subscriber from config (similar to `app.docker.yaml`):
+Create a subscriber from config (similar to `config.yaml`):
 ```go
 cfg := worker.SubscriberConfig{
   Driver: "amqp",
@@ -146,7 +146,7 @@ More worker examples:
 
 Single driver override (ignore `watermill.drivers` and subscribe only to AMQP):
 ```go
-cfg, err := worker.LoadSubscriberConfig("app.docker.yaml")
+cfg, err := worker.LoadSubscriberConfig("config.yaml")
 if err != nil {
   log.Fatal(err)
 }
@@ -203,7 +203,7 @@ wk := worker.New(
 
 ## Configuration
 
-Githooks is configured using a YAML file (for local dev, use `app.docker.yaml`).
+Githooks is configured using a YAML file (for local dev, use `config.yaml`).
 
 ## Helm Charts
 

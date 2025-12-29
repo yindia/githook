@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,25 +15,27 @@ import (
 )
 
 func main() {
+	logger := internal.NewLogger("server")
 	configPath := flag.String("config", "config.yaml", "Path to config file")
 	flag.Parse()
 
 	config, err := internal.LoadConfig(*configPath)
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		logger.Fatalf("load config: %v", err)
 	}
 
 	ruleEngine, err := internal.NewRuleEngine(internal.RulesConfig{
 		Rules:  config.Rules,
 		Strict: config.RulesStrict,
+		Logger: logger,
 	})
 	if err != nil {
-		log.Fatalf("compile rules: %v", err)
+		logger.Fatalf("compile rules: %v", err)
 	}
 
 	publisher, err := internal.NewPublisher(config.Watermill)
 	if err != nil {
-		log.Fatalf("publisher: %v", err)
+		logger.Fatalf("publisher: %v", err)
 	}
 	defer publisher.Close()
 
@@ -45,12 +46,13 @@ func main() {
 			config.Providers.GitHub.Secret,
 			ruleEngine,
 			publisher,
+			logger,
 		)
 		if err != nil {
-			log.Fatalf("github handler: %v", err)
+			logger.Fatalf("github handler: %v", err)
 		}
 		mux.Handle(config.Providers.GitHub.Path, ghHandler)
-		log.Printf("github webhook enabled on %s", config.Providers.GitHub.Path)
+		logger.Printf("github webhook enabled on %s", config.Providers.GitHub.Path)
 	}
 
 	addr := ":" + strconv.Itoa(config.Server.Port)
@@ -64,9 +66,9 @@ func main() {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("listening on %s", addr)
+		logger.Printf("listening on %s", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %v", err)
+			logger.Fatalf("listen: %v", err)
 		}
 	}()
 
@@ -74,6 +76,6 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("shutdown: %v", err)
+		logger.Printf("shutdown: %v", err)
 	}
 }

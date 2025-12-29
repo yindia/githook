@@ -26,6 +26,7 @@ type compiledRule struct {
 type RuleEngine struct {
 	rules  []compiledRule
 	strict bool
+	logger *log.Logger
 }
 
 type RuleMatch struct {
@@ -34,6 +35,10 @@ type RuleMatch struct {
 }
 
 func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
+	logger := cfg.Logger
+	if logger == nil {
+		logger = log.Default()
+	}
 	rules := make([]compiledRule, 0, len(cfg.Rules))
 	for _, rule := range cfg.Rules {
 		rewritten, varMap := rewriteExpression(rule.When)
@@ -50,7 +55,7 @@ func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
 		})
 	}
 
-	return &RuleEngine{rules: rules, strict: cfg.Strict}, nil
+	return &RuleEngine{rules: rules, strict: cfg.Strict, logger: logger}, nil
 }
 
 func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
@@ -60,15 +65,15 @@ func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
 
 	matches := make([]RuleMatch, 0, 1)
 	for _, rule := range r.rules {
-		params, missing := resolveRuleParams(event, rule.vars, rule.varMap)
-		log.Printf("rule debug: when=%q params=%v", rule.expr.String(), params)
+		params, missing := resolveRuleParams(r.logger, event, rule.vars, rule.varMap)
+		r.logger.Printf("rule debug: when=%q params=%v", rule.expr.String(), params)
 		if r.strict && len(missing) > 0 {
-			log.Printf("rule strict missing params: %v", missing)
+			r.logger.Printf("rule strict missing params: %v", missing)
 			continue
 		}
 		result, err := rule.expr.Evaluate(params)
 		if err != nil {
-			log.Printf("rule eval failed: %v", err)
+			r.logger.Printf("rule eval failed: %v", err)
 			continue
 		}
 		ok, _ := result.(bool)
@@ -79,7 +84,10 @@ func (r *RuleEngine) Evaluate(event Event) []RuleMatch {
 	return matches
 }
 
-func resolveRuleParams(event Event, vars []string, varMap map[string]string) (map[string]interface{}, []string) {
+func resolveRuleParams(logger *log.Logger, event Event, vars []string, varMap map[string]string) (map[string]interface{}, []string) {
+	if logger == nil {
+		logger = log.Default()
+	}
 	if len(vars) == 0 {
 		if len(event.RawPayload) == 0 {
 			return event.Data, nil
@@ -94,12 +102,12 @@ func resolveRuleParams(event Event, vars []string, varMap map[string]string) (ma
 			value, err := resolveJSONPath(event, path)
 			if err != nil {
 				missing = append(missing, path)
-				log.Printf("rule warn: jsonpath error path=%s err=%v", path, err)
+				logger.Printf("rule warn: jsonpath error path=%s err=%v", path, err)
 				params[name] = nil
 			} else {
 				if value == nil {
 					missing = append(missing, path)
-					log.Printf("rule warn: jsonpath no match path=%s", path)
+					logger.Printf("rule warn: jsonpath no match path=%s", path)
 				}
 				params[name] = value
 			}

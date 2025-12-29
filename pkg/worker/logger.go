@@ -1,6 +1,9 @@
 package worker
 
-import "log"
+import (
+	"log"
+	"os"
+)
 
 type Logger interface {
 	Printf(format string, args ...interface{})
@@ -9,5 +12,7 @@ type Logger interface {
 type stdLogger struct{}
 
 func (stdLogger) Printf(format string, args ...interface{}) {
-	log.Printf(format, args...)
+	defaultWorkerLogger.Printf(format, args...)
 }
+
+var defaultWorkerLogger = log.New(os.Stdout, "githooks/worker ", log.LstdFlags|log.Lmicroseconds)

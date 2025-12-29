@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -117,6 +118,7 @@ func LoadConfig(path string) (Config, error) {
 type RulesConfig struct {
 	Rules  []Rule `yaml:"rules"`
 	Strict bool   `yaml:"rules_strict"`
+	Logger *log.Logger
 }
 
 func LoadRulesConfig(path string) (RulesConfig, error) {

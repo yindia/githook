@@ -41,6 +41,9 @@ func main() {
 	driver := flag.String("driver", "", "Override subscriber driver (amqp|nats|kafka|sql|gochannel)")
 	flag.Parse()
 
+	log.SetPrefix("githooks/worker-example ")
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 

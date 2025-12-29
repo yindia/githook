@@ -16,6 +16,7 @@ type GitHubHandler struct {
 	hook      *github.Webhook
 	rules     *internal.RuleEngine
 	publisher internal.Publisher
+	logger    *log.Logger
 }
 
 var githubEvents = []github.Event{
@@ -67,13 +68,16 @@ var githubEvents = []github.Event{
 	github.GitHubAppAuthorizationEvent,
 }
 
-func NewGitHubHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher) (*GitHubHandler, error) {
+func NewGitHubHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger) (*GitHubHandler, error) {
 	hook, err := github.New(github.Options.Secret(secret))
 	if err != nil {
 		return nil, err
 	}
 
-	return &GitHubHandler{hook: hook, rules: rules, publisher: publisher}, nil
+	if logger == nil {
+		logger = log.Default()
+	}
+	return &GitHubHandler{hook: hook, rules: rules, publisher: publisher, logger: logger}, nil
 }
 
 func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +90,7 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := h.hook.Parse(r, githubEvents...)
 	if err != nil {
-		log.Printf("github parse failed: %v", err)
+		h.logger.Printf("github parse failed: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -112,10 +116,10 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *GitHubHandler) emit(r *http.Request, event internal.Event) {
 	topics := h.rules.Evaluate(event)
-	log.Printf("event provider=%s name=%s topics=%v", event.Provider, event.Name, topics)
+	h.logger.Printf("event provider=%s name=%s topics=%v", event.Provider, event.Name, topics)
 	for _, match := range topics {
 		if err := h.publisher.PublishForDrivers(r.Context(), match.Topic, event, match.Drivers); err != nil {
-			log.Printf("publish %s failed: %v", match.Topic, err)
+			h.logger.Printf("publish %s failed: %v", match.Topic, err)
 		}
 	}
 }

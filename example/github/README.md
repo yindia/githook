@@ -44,5 +44,5 @@ you run the server with.
 
 To use the Docker compose config directly:
 ```sh
-go run ./example/github/worker -config app.docker.yaml
+go run ./example/github/worker -config config.yaml
 ```
