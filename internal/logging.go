@@ -3,6 +3,7 @@ package internal
 import (
 	"log"
 	"os"
+	"strings"
 )
 
 // NewLogger creates a new logger with a standardized prefix.
@@ -13,4 +14,18 @@ func NewLogger(component string) *log.Logger {
 		prefix = prefix + "/" + component
 	}
 	return log.New(os.Stdout, prefix+" ", log.LstdFlags|log.Lmicroseconds)
+}
+
+func WithRequestID(base *log.Logger, requestID string) *log.Logger {
+	if base == nil {
+		base = log.Default()
+	}
+	prefix := strings.TrimSpace(base.Prefix())
+	if requestID != "" {
+		if prefix != "" {
+			prefix = prefix + " "
+		}
+		prefix = prefix + "request_id=" + requestID
+	}
+	return log.New(base.Writer(), prefix+" ", base.Flags())
 }

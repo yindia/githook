@@ -49,6 +49,7 @@ func main() {
 			ruleEngine,
 			publisher,
 			logger,
+			config.Server.MaxBodyBytes,
 		)
 		if err != nil {
 			logger.Fatalf("github handler: %v", err)
@@ -63,6 +64,7 @@ func main() {
 			ruleEngine,
 			publisher,
 			logger,
+			config.Server.MaxBodyBytes,
 		)
 		if err != nil {
 			logger.Fatalf("gitlab handler: %v", err)
@@ -77,6 +79,7 @@ func main() {
 			ruleEngine,
 			publisher,
 			logger,
+			config.Server.MaxBodyBytes,
 		)
 		if err != nil {
 			logger.Fatalf("bitbucket handler: %v", err)
@@ -89,7 +92,10 @@ func main() {
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       time.Duration(config.Server.ReadTimeoutMS) * time.Millisecond,
+		WriteTimeout:      time.Duration(config.Server.WriteTimeoutMS) * time.Millisecond,
+		IdleTimeout:       time.Duration(config.Server.IdleTimeoutMS) * time.Millisecond,
+		ReadHeaderTimeout: time.Duration(config.Server.ReadHeaderMS) * time.Millisecond,
 	}
 
 	shutdown := make(chan os.Signal, 1)

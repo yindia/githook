@@ -13,7 +13,12 @@ import (
 type AppConfig struct {
 	// Server holds server-specific configuration.
 	Server struct {
-		Port int `yaml:"port"`
+		Port           int   `yaml:"port"`
+		ReadTimeoutMS  int64 `yaml:"read_timeout_ms"`
+		WriteTimeoutMS int64 `yaml:"write_timeout_ms"`
+		IdleTimeoutMS  int64 `yaml:"idle_timeout_ms"`
+		ReadHeaderMS   int64 `yaml:"read_header_timeout_ms"`
+		MaxBodyBytes   int64 `yaml:"max_body_bytes"`
 	} `yaml:"server"`
 	// Providers contains configuration for each Git provider.
 	Providers struct {
@@ -175,6 +180,21 @@ func LoadRulesConfig(path string) (RulesConfig, error) {
 func applyDefaults(cfg *AppConfig) {
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = 8080
+	}
+	if cfg.Server.ReadTimeoutMS == 0 {
+		cfg.Server.ReadTimeoutMS = 5000
+	}
+	if cfg.Server.WriteTimeoutMS == 0 {
+		cfg.Server.WriteTimeoutMS = 10000
+	}
+	if cfg.Server.IdleTimeoutMS == 0 {
+		cfg.Server.IdleTimeoutMS = 60000
+	}
+	if cfg.Server.ReadHeaderMS == 0 {
+		cfg.Server.ReadHeaderMS = 5000
+	}
+	if cfg.Server.MaxBodyBytes == 0 {
+		cfg.Server.MaxBodyBytes = 1 << 20
 	}
 	if cfg.Providers.GitHub.Path == "" {
 		cfg.Providers.GitHub.Path = "/webhooks/github"

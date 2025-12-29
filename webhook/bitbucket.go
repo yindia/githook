@@ -17,6 +17,7 @@ type BitbucketHandler struct {
 	rules     *internal.RuleEngine
 	publisher internal.Publisher
 	logger    *log.Logger
+	maxBody   int64
 }
 
 var bitbucketEvents = []bitbucket.Event{
@@ -41,7 +42,7 @@ var bitbucketEvents = []bitbucket.Event{
 }
 
 // NewBitbucketHandler creates a new BitbucketHandler.
-func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger) (*BitbucketHandler, error) {
+func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger, maxBody int64) (*BitbucketHandler, error) {
 	options := make([]bitbucket.Option, 0, 1)
 	if secret != "" {
 		options = append(options, bitbucket.Options.UUID(secret))
@@ -53,11 +54,17 @@ func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher in
 	if logger == nil {
 		logger = log.Default()
 	}
-	return &BitbucketHandler{hook: hook, rules: rules, publisher: publisher, logger: logger}, nil
+	return &BitbucketHandler{hook: hook, rules: rules, publisher: publisher, logger: logger, maxBody: maxBody}, nil
 }
 
 // ServeHTTP handles an incoming HTTP request.
 func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.maxBody > 0 {
+		r.Body = http.MaxBytesReader(w, r.Body, h.maxBody)
+	}
+	reqID := requestID(r)
+	w.Header().Set("X-Request-Id", reqID)
+	logger := internal.WithRequestID(h.logger, reqID)
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -67,7 +74,7 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := h.hook.Parse(r, bitbucketEvents...)
 	if err != nil {
-		h.logger.Printf("bitbucket parse failed: %v", err)
+		logger.Printf("bitbucket parse failed: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -76,7 +83,7 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch payload.(type) {
 	default:
 		rawObject, data := rawObjectAndFlatten(rawBody)
-		h.emit(r, internal.Event{
+		h.emit(r, logger, internal.Event{
 			Provider:   "bitbucket",
 			Name:       eventName,
 			Data:       data,
@@ -88,12 +95,12 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *BitbucketHandler) emit(r *http.Request, event internal.Event) {
+func (h *BitbucketHandler) emit(r *http.Request, logger *log.Logger, event internal.Event) {
 	topics := h.rules.Evaluate(event)
-	h.logger.Printf("event provider=%s name=%s topics=%v", event.Provider, event.Name, topics)
+	logger.Printf("event provider=%s name=%s topics=%v", event.Provider, event.Name, topics)
 	for _, match := range topics {
 		if err := h.publisher.PublishForDrivers(r.Context(), match.Topic, event, match.Drivers); err != nil {
-			h.logger.Printf("publish %s failed: %v", match.Topic, err)
+			logger.Printf("publish %s failed: %v", match.Topic, err)
 		}
 	}
 }

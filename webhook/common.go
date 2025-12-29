@@ -2,6 +2,9 @@ package webhook
 
 import (
 	"encoding/json"
+	"net/http"
+
+	"github.com/ThreeDotsLabs/watermill"
 
 	"githooks/internal"
 )
@@ -19,4 +22,20 @@ func rawObjectAndFlatten(raw []byte) (interface{}, map[string]interface{}) {
 		return out, map[string]interface{}{}
 	}
 	return out, internal.Flatten(objectMap)
+}
+
+func requestID(r *http.Request) string {
+	if r == nil {
+		return watermill.NewUUID()
+	}
+	if id := r.Header.Get("X-Request-Id"); id != "" {
+		return id
+	}
+	if id := r.Header.Get("X-Request-ID"); id != "" {
+		return id
+	}
+	if id := r.Header.Get("X-Correlation-Id"); id != "" {
+		return id
+	}
+	return watermill.NewUUID()
 }

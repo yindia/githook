@@ -87,6 +87,7 @@ Docs:
 - [SDK client injection](docs/sdk_clients.md)
 
 Githooks is configured using a single YAML file. Environment variables like `${VAR}` are automatically expanded.
+Requests use or generate `X-Request-Id`, which is echoed back in responses and included in logs.
 
 ### Providers
 
@@ -106,6 +107,18 @@ providers:
     enabled: false
     path: /webhooks/bitbucket
     secret: ${BITBUCKET_WEBHOOK_SECRET} # Optional, for X-Hook-UUID
+```
+
+### Server Limits
+
+```yaml
+server:
+  port: 8080
+  read_timeout_ms: 5000
+  write_timeout_ms: 10000
+  idle_timeout_ms: 60000
+  read_header_timeout_ms: 5000
+  max_body_bytes: 1048576
 ```
 
 ### Watermill Drivers (Publishing)
