@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	wmamaqp "github.com/ThreeDotsLabs/watermill-amqp/pkg/amqp"
@@ -96,7 +97,9 @@ func newSinglePublisher(cfg WatermillConfig, driver string) (Publisher, error) {
 		if len(cfg.Kafka.Brokers) == 0 {
 			return nil, fmt.Errorf("kafka brokers are required")
 		}
-		pub, err := wmkafka.NewPublisher(cfg.Kafka.Brokers, wmkafka.DefaultMarshaler{}, nil, logger)
+		pub, err := retryPublisher(func() (message.Publisher, error) {
+			return wmkafka.NewPublisher(cfg.Kafka.Brokers, wmkafka.DefaultMarshaler{}, nil, logger)
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -165,6 +168,22 @@ func newSinglePublisher(cfg WatermillConfig, driver string) (Publisher, error) {
 		}
 		return nil, fmt.Errorf("unsupported watermill driver: %s", driver)
 	}
+}
+
+func retryPublisher(build func() (message.Publisher, error)) (message.Publisher, error) {
+	const attempts = 10
+	const delay = 2 * time.Second
+
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		pub, err := build()
+		if err == nil {
+			return pub, nil
+		}
+		lastErr = err
+		time.Sleep(delay)
+	}
+	return nil, lastErr
 }
 
 func (w *watermillPublisher) Publish(ctx context.Context, topic string, event Event) error {

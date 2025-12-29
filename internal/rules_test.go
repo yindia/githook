@@ -16,12 +16,9 @@ func TestRuleEngineEvaluate(t *testing.T) {
 	}
 
 	event := Event{
-		Provider: "github",
-		Name:     "pull_request",
-		Data: map[string]interface{}{
-			"action": "opened",
-			"merged": false,
-		},
+		Provider:   "github",
+		Name:       "pull_request",
+		RawPayload: []byte(`{"action":"opened","merged":false}`),
 	}
 
 	matches := engine.Evaluate(event)
@@ -46,9 +43,9 @@ func TestRuleEngineEvaluateMissingField(t *testing.T) {
 	}
 
 	event := Event{
-		Provider: "github",
-		Name:     "push",
-		Data:     map[string]interface{}{},
+		Provider:   "github",
+		Name:       "push",
+		RawPayload: []byte(`{}`),
 	}
 
 	matches := engine.Evaluate(event)
@@ -70,11 +67,9 @@ func TestRuleEngineWithDrivers(t *testing.T) {
 	}
 
 	event := Event{
-		Provider: "github",
-		Name:     "pull_request",
-		Data: map[string]interface{}{
-			"action": "opened",
-		},
+		Provider:   "github",
+		Name:       "pull_request",
+		RawPayload: []byte(`{"action":"opened"}`),
 	}
 
 	matches := engine.Evaluate(event)
@@ -83,5 +78,102 @@ func TestRuleEngineWithDrivers(t *testing.T) {
 	}
 	if len(matches[0].Drivers) != 2 {
 		t.Fatalf("expected 2 drivers, got %d", len(matches[0].Drivers))
+	}
+}
+
+func TestRuleEngineJSONPathDot(t *testing.T) {
+	cfg := RulesConfig{
+		Rules: []Rule{
+			{When: "$.pull_request.draft == false", Emit: "pr.opened"},
+		},
+	}
+
+	engine, err := NewRuleEngine(cfg)
+	if err != nil {
+		t.Fatalf("new rule engine: %v", err)
+	}
+
+	event := Event{
+		Provider:   "github",
+		Name:       "pull_request",
+		RawPayload: []byte(`{"pull_request":{"draft":false}}`),
+	}
+
+	matches := engine.Evaluate(event)
+	if len(matches) != 1 {
+		t.Fatalf("expected 1 match, got %d", len(matches))
+	}
+}
+
+func TestRuleEngineJSONPathIndex(t *testing.T) {
+	cfg := RulesConfig{
+		Rules: []Rule{
+			{When: "$.pull_request[0].draft == false", Emit: "pr.opened"},
+		},
+	}
+
+	engine, err := NewRuleEngine(cfg)
+	if err != nil {
+		t.Fatalf("new rule engine: %v", err)
+	}
+
+	event := Event{
+		Provider:   "github",
+		Name:       "pull_request",
+		RawPayload: []byte(`{"pull_request":[{"draft":false}]}`),
+	}
+
+	matches := engine.Evaluate(event)
+	if len(matches) != 1 {
+		t.Fatalf("expected 1 match, got %d", len(matches))
+	}
+}
+
+func TestRuleEngineJSONPathFilter(t *testing.T) {
+	cfg := RulesConfig{
+		Rules: []Rule{
+			{When: "$.pull_request[?(@.draft==false)][0].draft == false", Emit: "pr.opened"},
+		},
+	}
+
+	engine, err := NewRuleEngine(cfg)
+	if err != nil {
+		t.Fatalf("new rule engine: %v", err)
+	}
+
+	event := Event{
+		Provider:   "github",
+		Name:       "pull_request",
+		RawPayload: []byte(`{"pull_request":[{"draft":false},{"draft":true}]}`),
+	}
+
+	matches := engine.Evaluate(event)
+	if len(matches) != 1 {
+		t.Fatalf("expected 1 match, got %d", len(matches))
+	}
+}
+
+func TestRuleEngineBareJSONPath(t *testing.T) {
+	cfg := RulesConfig{
+		Rules: []Rule{
+			{When: "action == \"opened\" && pull_request.draft == false", Emit: "pr.opened"},
+			{When: "pull_requests[?(@.draft==false)][0].draft == false", Emit: "pr.any"},
+		},
+	}
+
+	engine, err := NewRuleEngine(cfg)
+	if err != nil {
+		t.Fatalf("new rule engine: %v", err)
+	}
+
+	event := Event{
+		Provider:   "github",
+		Name:       "pull_request",
+		RawPayload: []byte(`{"action":"opened","pull_request":{"draft":false},"pull_requests":[{"draft":false}]}`),
+	}
+
+	matches := engine.Evaluate(event)
+	if len(matches) != 2 {
+		t.Fatalf("expected 2 matches, got %d", len(matches))
 	}
 }

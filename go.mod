@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
+	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/ThreeDotsLabs/watermill v1.3.7
 	github.com/ThreeDotsLabs/watermill-amqp v1.1.4
 	github.com/ThreeDotsLabs/watermill-http/v2 v2.3.1
@@ -19,6 +20,7 @@ require (
 
 require (
 	github.com/DataDog/zstd v1.4.1 // indirect
+	github.com/PaesslerAG/gval v1.0.0 // indirect
 	github.com/Shopify/sarama v1.23.1 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect

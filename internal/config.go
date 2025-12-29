@@ -102,9 +102,11 @@ func LoadConfig(path string) (Config, error) {
 	}
 
 	applyDefaults(&cfg.AppConfig)
-	if err := validateRules(cfg.Rules); err != nil {
+	normalized, err := normalizeRules(cfg.Rules)
+	if err != nil {
 		return cfg, err
 	}
+	cfg.Rules = normalized
 
 	return cfg, nil
 }
@@ -122,9 +124,11 @@ func LoadRulesConfig(path string) (RulesConfig, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, err
 	}
-	if err := validateRules(cfg.Rules); err != nil {
+	normalized, err := normalizeRules(cfg.Rules)
+	if err != nil {
 		return cfg, err
 	}
+	cfg.Rules = normalized
 	return cfg, nil
 }
 
@@ -146,23 +150,26 @@ func applyDefaults(cfg *AppConfig) {
 	}
 }
 
-func validateRules(rules []Rule) error {
+func normalizeRules(rules []Rule) ([]Rule, error) {
+	out := make([]Rule, 0, len(rules))
 	for i := range rules {
-		rules[i].When = strings.TrimSpace(rules[i].When)
-		rules[i].Emit = strings.TrimSpace(rules[i].Emit)
-		if rules[i].When == "" || rules[i].Emit == "" {
-			return fmt.Errorf("rule %d is missing when or emit", i)
+		rule := rules[i]
+		rule.When = strings.TrimSpace(rule.When)
+		rule.Emit = strings.TrimSpace(rule.Emit)
+		if rule.When == "" || rule.Emit == "" {
+			return nil, fmt.Errorf("rule %d is missing when or emit", i)
 		}
-		if len(rules[i].Drivers) > 0 {
-			drivers := make([]string, 0, len(rules[i].Drivers))
-			for _, driver := range rules[i].Drivers {
+		if len(rule.Drivers) > 0 {
+			drivers := make([]string, 0, len(rule.Drivers))
+			for _, driver := range rule.Drivers {
 				trimmed := strings.TrimSpace(driver)
 				if trimmed != "" {
 					drivers = append(drivers, trimmed)
 				}
 			}
-			rules[i].Drivers = drivers
+			rule.Drivers = drivers
 		}
+		out = append(out, rule)
 	}
-	return nil
+	return out, nil
 }

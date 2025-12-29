@@ -1,7 +1,9 @@
 package webhook
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -75,6 +77,13 @@ func NewGitHubHandler(secret string, rules *internal.RuleEngine, publisher inter
 }
 
 func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rawBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(rawBody))
+
 	payload, err := h.hook.Parse(r, githubEvents...)
 	if err != nil {
 		log.Printf("github parse failed: %v", err)
@@ -83,15 +92,19 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	eventName := r.Header.Get("X-GitHub-Event")
-	switch event := payload.(type) {
+	switch payload.(type) {
 	case github.PingPayload:
 		w.WriteHeader(http.StatusOK)
 		return
 	default:
-		data, err := flattenPayload(event)
-		if err == nil {
-			h.emit(r, internal.Event{Provider: "github", Name: eventName, Data: data})
-		}
+		rawObject, data := rawObjectAndFlatten(rawBody)
+		h.emit(r, internal.Event{
+			Provider:   "github",
+			Name:       eventName,
+			Data:       data,
+			RawPayload: rawBody,
+			RawObject:  rawObject,
+		})
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -107,23 +120,14 @@ func (h *GitHubHandler) emit(r *http.Request, event internal.Event) {
 	}
 }
 
-func jsonToMap(payload interface{}) (map[string]interface{}, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
+func rawObjectAndFlatten(raw []byte) (interface{}, map[string]interface{}) {
+	var out interface{}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, map[string]interface{}{}
 	}
-
-	var out map[string]interface{}
-	if err := json.Unmarshal(data, &out); err != nil {
-		return nil, err
+	objectMap, ok := out.(map[string]interface{})
+	if !ok {
+		return out, map[string]interface{}{}
 	}
-	return out, nil
-}
-
-func flattenPayload(payload interface{}) (map[string]interface{}, error) {
-	raw, err := jsonToMap(payload)
-	if err != nil {
-		return nil, err
-	}
-	return internal.Flatten(raw), nil
+	return out, internal.Flatten(objectMap)
 }

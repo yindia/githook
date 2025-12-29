@@ -14,11 +14,11 @@ watermill:
     mode: durable_queue
 
 rules:
-  - when: action == "opened" && pull_request.draft == false
+  - when: $.action == "opened" && $.pull_request.draft == false
     emit: pr.opened.ready
 
-  - when: action == "closed" && pull_request.merged == true
+  - when: $.action == "closed" && $.pull_request.merged == true
     emit: pr.merged
 
-  - when: action == "synchronize"
+  - when: $.action == "synchronize"
     emit: pr.code.updated

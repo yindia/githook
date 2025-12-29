@@ -164,9 +164,9 @@ providers:
 watermill:
   driver: gochannel
 rules:
-  - when: action == "opened" && pull_request.draft == false
+  - when: $.action == "opened" && $.pull_request.draft == false
     emit: pr.opened.ready
-  - when: action == "closed" && pull_request.merged == true
+  - when: $.action == "closed" && $.pull_request.merged == true
     emit: pr.merged
     drivers: [amqp, http]
 ```
@@ -176,7 +176,13 @@ Provider: github, gitlab, bitbucket
 Name:     pull_request, push, ...
 Data:     flattened payload fields used by rules
 
-Nested fields are flattened with dot paths and array indices:
+Rules use JSONPath for field access and govaluate for boolean logic:
+- `$.pull_request.draft == false`
+- `$.pull_request.commits[0].created == true`
+- `$.pull_request[?(@.draft==false)][0].draft == false`
+Bare identifiers are treated as root JSONPath (e.g., `action` becomes `$.action`, `pull_request.draft` becomes `$.pull_request.draft`).
+
+Flattened data is still included in the emitted event:
 - `pull_request.draft`
 - `pull_request.commits[0].created`
 - `pull_request.commits[]` (full array)

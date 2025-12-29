@@ -15,12 +15,12 @@ watermill:
   nats:
     cluster_id: test-cluster
     client_id: githooks
-    url: nats://nats-streaming:4222
+    url: nats://nats-streaming:4222 
   kafka:
     brokers: ["kafka:9092"]
   http:
     mode: base_url
-    base_url: http://http-sink:8081/hooks
+    base_url: https://webhook.site/0e0f5ad1-b451-4432-81ea-0d57ab6d7f23
   sql:
     driver: postgres
     dsn: postgres://githooks:githooks@postgres:5432/githooks?sslmode=disable
@@ -29,10 +29,6 @@ watermill:
 rules:
   - when: action == "opened" && pull_request.draft == false
     emit: pr.opened.ready
-    driver: amqp
 
-  - when: action == "closed" && pull_request.merged == true
-    emit: pr.merged
-
-  - when: action == "synchronize"
-    emit: pr.code.updated
+  - when: pull_requests[?(@.draft==false)][0].draft == false
+    emit: pr.opened.ready
