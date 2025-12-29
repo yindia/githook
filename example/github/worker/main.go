@@ -9,6 +9,8 @@ import (
 	"syscall"
 
 	worker "githooks/pkg/worker"
+
+	_ "github.com/lib/pq"
 )
 
 type retryOnce struct{}
@@ -36,6 +38,7 @@ func (retryOnce) OnError(ctx context.Context, evt *worker.Event, err error) work
 
 func main() {
 	configPath := flag.String("config", "config.yaml", "Path to app config")
+	driver := flag.String("driver", "", "Override subscriber driver (amqp|nats|kafka|sql|gochannel)")
 	flag.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -44,6 +47,10 @@ func main() {
 	subCfg, err := worker.LoadSubscriberConfig(*configPath)
 	if err != nil {
 		log.Fatalf("load config: %v", err)
+	}
+	if *driver != "" {
+		subCfg.Driver = *driver
+		subCfg.Drivers = nil
 	}
 
 	sub, err := worker.BuildSubscriber(subCfg)
@@ -85,6 +92,10 @@ func main() {
 			return nil
 		}
 
+		if driver := evt.Metadata["driver"]; driver != "" {
+			log.Printf("driver=%s topic=%s provider=%s", driver, evt.Topic, evt.Provider)
+		}
+
 		if evt.Client != nil {
 			gh := evt.Client.(*githubAppClient)
 			_ = gh
@@ -102,6 +113,10 @@ func main() {
 	wk.HandleTopic("pr.opened.ready", func(ctx context.Context, evt *worker.Event) error {
 		if evt.Provider != "github" {
 			return nil
+		}
+
+		if driver := evt.Metadata["driver"]; driver != "" {
+			log.Printf("driver=%s topic=%s provider=%s", driver, evt.Topic, evt.Provider)
 		}
 
 		if evt.Client != nil {

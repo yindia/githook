@@ -8,22 +8,22 @@ providers:
     secret: ${GITHUB_WEBHOOK_SECRET}
 
 watermill:
-  drivers: [amqp, nats, kafka, http, sql]
+  drivers: [amqp,sql,http,kafka,nats]
   amqp:
-    url: amqp://guest:guest@rabbitmq:5672/
+    url: amqp://guest:guest@localhost:5672/
     mode: durable_queue
   nats:
     cluster_id: test-cluster
     client_id: githooks
-    url: nats://nats-streaming:4222 
+    url: nats://localhost:4222
   kafka:
-    brokers: ["kafka:9092"]
+    brokers: ["localhost:29092"]
   http:
     mode: base_url
-    base_url: https://webhook.site/0e0f5ad1-b451-4432-81ea-0d57ab6d7f23
+    base_url: http://localhost:8081
   sql:
     driver: postgres
-    dsn: postgres://githooks:githooks@postgres:5432/githooks?sslmode=disable
+    dsn: postgres://githooks:githooks@localhost:5432/githooks?sslmode=disable
     dialect: postgres
     auto_initialize_schema: true
 rules:

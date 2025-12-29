@@ -31,8 +31,18 @@ rules:
 This worker subscribes to `github.pull_request` and runs custom logic.
 
 ```sh
-go run ./example/github/worker -config app.docker.yaml
+go run ./example/github/worker
+```
+
+To target a single subscriber driver (when `watermill.drivers` is set), pass `-driver`:
+```sh
+go run ./example/github/worker -driver amqp
 ```
 
 The worker reads the `watermill` section from your app config, so you can reuse the same YAML
 you run the server with.
+
+To use the Docker compose config directly:
+```sh
+go run ./example/github/worker -config app.docker.yaml
+```

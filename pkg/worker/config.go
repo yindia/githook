@@ -23,10 +23,11 @@ type KafkaConfig struct {
 }
 
 type NATSConfig struct {
-	ClusterID string `yaml:"cluster_id"`
-	ClientID  string `yaml:"client_id"`
-	URL       string `yaml:"url"`
-	Durable   string `yaml:"durable"`
+	ClusterID      string `yaml:"cluster_id"`
+	ClientID       string `yaml:"client_id"`
+	ClientIDSuffix string `yaml:"client_id_suffix"`
+	URL            string `yaml:"url"`
+	Durable        string `yaml:"durable"`
 }
 
 type AMQPConfig struct {

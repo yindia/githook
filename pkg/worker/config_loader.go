@@ -31,4 +31,7 @@ func applySubscriberDefaults(cfg *SubscriberConfig) {
 	if cfg.GoChannel.OutputChannelBuffer == 0 {
 		cfg.GoChannel.OutputChannelBuffer = 64
 	}
+	if cfg.NATS.ClientIDSuffix == "" {
+		cfg.NATS.ClientIDSuffix = "-worker"
+	}
 }

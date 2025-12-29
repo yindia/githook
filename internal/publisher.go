@@ -46,6 +46,8 @@ func RegisterPublisherDriver(name string, factory PublisherFactory) {
 }
 
 func NewPublisher(cfg WatermillConfig) (Publisher, error) {
+	logger := watermill.NewStdLogger(false, false)
+
 	drivers := cfg.Drivers
 	if len(drivers) == 0 && cfg.Driver != "" {
 		drivers = []string{cfg.Driver}
@@ -55,17 +57,25 @@ func NewPublisher(cfg WatermillConfig) (Publisher, error) {
 	}
 
 	pubs := make(map[string]Publisher, len(drivers))
+	builtDrivers := make([]string, 0, len(drivers))
 	for _, driver := range drivers {
-		pub, err := newSinglePublisher(cfg, driver)
+		pub, err := retryPublisherBuild(func() (Publisher, error) {
+			return newSinglePublisher(cfg, driver)
+		})
 		if err != nil {
-			for _, existing := range pubs {
-				_ = existing.Close()
-			}
-			return nil, err
+			logger.Error("publisher init failed, skipping driver", err, watermill.LogFields{
+				"driver": driver,
+			})
+			continue
 		}
-		pubs[strings.ToLower(driver)] = pub
+		key := strings.ToLower(driver)
+		pubs[key] = pub
+		builtDrivers = append(builtDrivers, key)
 	}
-	return &publisherMux{publishers: pubs, defaultDrivers: drivers}, nil
+	if len(pubs) == 0 {
+		return nil, errors.New("no publishers available")
+	}
+	return &publisherMux{publishers: pubs, defaultDrivers: builtDrivers}, nil
 }
 
 func newSinglePublisher(cfg WatermillConfig, driver string) (Publisher, error) {
@@ -172,6 +182,22 @@ func newSinglePublisher(cfg WatermillConfig, driver string) (Publisher, error) {
 }
 
 func retryPublisher(build func() (message.Publisher, error)) (message.Publisher, error) {
+	const attempts = 10
+	const delay = 2 * time.Second
+
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		pub, err := build()
+		if err == nil {
+			return pub, nil
+		}
+		lastErr = err
+		time.Sleep(delay)
+	}
+	return nil, lastErr
+}
+
+func retryPublisherBuild(build func() (Publisher, error)) (Publisher, error) {
 	const attempts = 10
 	const delay = 2 * time.Second
 

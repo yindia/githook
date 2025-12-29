@@ -1,10 +1,12 @@
 package worker
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -29,14 +31,61 @@ func NewFromConfig(cfg SubscriberConfig, opts ...Option) (*Worker, error) {
 func BuildSubscriber(cfg SubscriberConfig) (message.Subscriber, error) {
 	logger := watermill.NewStdLogger(false, false)
 
-	driver := cfg.Driver
-	if driver == "" && len(cfg.Drivers) > 0 {
-		driver = cfg.Drivers[0]
+	if len(cfg.Drivers) > 0 {
+		return buildMultiSubscriber(cfg, logger)
 	}
+
+	driver := cfg.Driver
 	if driver == "" {
 		driver = "gochannel"
 	}
 
+	return retrySubscriberBuild(func() (message.Subscriber, error) {
+		return buildSingleSubscriber(cfg, logger, driver)
+	})
+}
+
+func buildMultiSubscriber(cfg SubscriberConfig, logger watermill.LoggerAdapter) (message.Subscriber, error) {
+	drivers := uniqueStrings(cfg.Drivers)
+	if cfg.Driver != "" {
+		drivers = append(drivers, cfg.Driver)
+		drivers = uniqueStrings(drivers)
+	}
+	if len(drivers) == 0 {
+		return nil, errors.New("at least one driver is required")
+	}
+
+	subs := make([]namedSubscriber, 0, len(drivers))
+	for _, driver := range drivers {
+		if !isSubscriberDriverSupported(driver) {
+			logger.Info("skipping unsupported subscriber driver", watermill.LogFields{
+				"driver": driver,
+			})
+			continue
+		}
+		sub, err := retrySubscriberBuild(func() (message.Subscriber, error) {
+			return buildSingleSubscriber(cfg, logger, driver)
+		})
+		if err != nil {
+			logger.Error("subscriber init failed, skipping driver", err, watermill.LogFields{
+				"driver": driver,
+			})
+			continue
+		}
+		subs = append(subs, namedSubscriber{driver: driver, sub: sub})
+	}
+
+	if len(subs) == 0 {
+		return nil, errors.New("no supported subscriber drivers configured")
+	}
+
+	return &multiSubscriber{
+		subscribers: subs,
+		bufferSize:  cfg.GoChannel.OutputChannelBuffer,
+	}, nil
+}
+
+func buildSingleSubscriber(cfg SubscriberConfig, logger watermill.LoggerAdapter, driver string) (message.Subscriber, error) {
 	switch strings.ToLower(driver) {
 	case "gochannel":
 		return gochannel.NewGoChannel(gochannel.Config{
@@ -59,9 +108,13 @@ func BuildSubscriber(cfg SubscriberConfig) (message.Subscriber, error) {
 		if cfg.NATS.ClusterID == "" || cfg.NATS.ClientID == "" {
 			return nil, errors.New("nats cluster_id and client_id are required")
 		}
+		clientID := cfg.NATS.ClientID
+		if cfg.NATS.ClientIDSuffix != "" {
+			clientID = clientID + cfg.NATS.ClientIDSuffix
+		}
 		natsCfg := wmnats.StreamingSubscriberConfig{
 			ClusterID:   cfg.NATS.ClusterID,
-			ClientID:    cfg.NATS.ClientID,
+			ClientID:    clientID,
 			DurableName: cfg.NATS.Durable,
 			Unmarshaler: wmnats.GobMarshaler{},
 		}
@@ -130,6 +183,22 @@ func retrySubscriber(build func() (message.Subscriber, error)) (message.Subscrib
 	return nil, lastErr
 }
 
+func retrySubscriberBuild(build func() (message.Subscriber, error)) (message.Subscriber, error) {
+	const attempts = 10
+	const delay = 2 * time.Second
+
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		sub, err := build()
+		if err == nil {
+			return sub, nil
+		}
+		lastErr = err
+		time.Sleep(delay)
+	}
+	return nil, lastErr
+}
+
 type closingSubscriber struct {
 	message.Subscriber
 	closeFn func() error
@@ -146,6 +215,77 @@ func (c *closingSubscriber) Close() error {
 		}
 	}
 	return err
+}
+
+type multiSubscriber struct {
+	subscribers []namedSubscriber
+	bufferSize  int64
+}
+
+type namedSubscriber struct {
+	driver string
+	sub    message.Subscriber
+}
+
+func (m *multiSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	if len(m.subscribers) == 0 {
+		return nil, errors.New("no subscribers configured")
+	}
+
+	buffer := m.bufferSize
+	if buffer <= 0 {
+		buffer = 64
+	}
+	out := make(chan *message.Message, buffer)
+
+	var wg sync.WaitGroup
+	wg.Add(len(m.subscribers))
+
+	for _, entry := range m.subscribers {
+		ch, err := entry.sub.Subscribe(ctx, topic)
+		if err != nil {
+			for _, existing := range m.subscribers {
+				_ = existing.sub.Close()
+			}
+			return nil, err
+		}
+		driver := entry.driver
+		go func(ch <-chan *message.Message, driver string) {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case msg, ok := <-ch:
+					if !ok {
+						return
+					}
+					if msg.Metadata == nil {
+						msg.Metadata = message.Metadata{}
+					}
+					msg.Metadata.Set("driver", driver)
+					out <- msg
+				}
+			}
+		}(ch, driver)
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	return out, nil
+}
+
+func (m *multiSubscriber) Close() error {
+	var firstErr error
+	for _, entry := range m.subscribers {
+		if err := entry.sub.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 func amqpSubscriberConfigFromMode(url, mode string) (wmamaqp.Config, error) {
@@ -171,5 +311,31 @@ func sqlAdapters(dialect string) (wmsql.SchemaAdapter, wmsql.OffsetsAdapter, err
 		return wmsql.DefaultMySQLSchema{}, wmsql.DefaultMySQLOffsetsAdapter{}, nil
 	default:
 		return nil, nil, fmt.Errorf("unsupported sql dialect: %s", dialect)
+	}
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func isSubscriberDriverSupported(driver string) bool {
+	switch strings.ToLower(driver) {
+	case "gochannel", "amqp", "nats", "kafka", "sql":
+		return true
+	default:
+		return false
 	}
 }
