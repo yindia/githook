@@ -23,7 +23,7 @@ type Client struct {
 }
 
 // NewTokenClient returns a stub Bitbucket client.
-func NewTokenClient(cfg auth.BitbucketConfig, token string) *Client {
+func NewTokenClient(cfg auth.ProviderConfig, token string) *Client {
 	if token == "" {
 		token = cfg.Token
 	}

@@ -10,14 +10,20 @@ import (
 
 // stubPublisher is a mock publisher for testing.
 type stubPublisher struct {
-	published int
-	lastTopic string
+	published    int
+	lastTopic    string
+	lastPayload  []byte
+	lastMetadata message.Metadata
 }
 
 // Publish increments the published count and records the topic.
 func (s *stubPublisher) Publish(topic string, msgs ...*message.Message) error {
 	s.published += len(msgs)
 	s.lastTopic = topic
+	if len(msgs) > 0 {
+		s.lastPayload = append([]byte(nil), msgs[0].Payload...)
+		s.lastMetadata = msgs[0].Metadata
+	}
 	return nil
 }
 
@@ -115,5 +121,53 @@ func TestMultipleDrivers(t *testing.T) {
 
 	if a.published != 1 || b.published != 1 {
 		t.Fatalf("expected publish to both drivers, got a=%d b=%d", a.published, b.published)
+	}
+}
+
+// TestPublishUsesRawPayloadAndMetadata ensures raw payload is forwarded and metadata is set.
+func TestPublishUsesRawPayloadAndMetadata(t *testing.T) {
+	const driverName = "payload"
+
+	orig, had := publisherFactories[driverName]
+	defer func() {
+		if had {
+			publisherFactories[driverName] = orig
+		} else {
+			delete(publisherFactories, driverName)
+		}
+	}()
+
+	stub := &stubPublisher{}
+	RegisterPublisherDriver(driverName, func(cfg WatermillConfig, logger watermill.LoggerAdapter) (message.Publisher, func() error, error) {
+		return stub, nil, nil
+	})
+
+	pub, err := NewPublisher(WatermillConfig{Driver: driverName})
+	if err != nil {
+		t.Fatalf("new publisher: %v", err)
+	}
+
+	raw := []byte(`{"hello":"world"}`)
+	event := Event{
+		Provider:   "github",
+		Name:       "push",
+		RequestID:  "req-123",
+		RawPayload: raw,
+	}
+	if err := pub.PublishForDrivers(context.Background(), "payload.topic", event, nil); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+
+	if string(stub.lastPayload) != string(raw) {
+		t.Fatalf("expected raw payload to be forwarded")
+	}
+	if stub.lastMetadata.Get("provider") != "github" {
+		t.Fatalf("expected provider metadata")
+	}
+	if stub.lastMetadata.Get("event") != "push" {
+		t.Fatalf("expected event metadata")
+	}
+	if stub.lastMetadata.Get("request_id") != "req-123" {
+		t.Fatalf("expected request_id metadata")
 	}
 }

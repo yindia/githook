@@ -1,6 +1,6 @@
 # SDK Client Injection
 
-Use the SDK to attach provider-specific clients to each event. Build the app clients once, then inject them per event with `ProviderClients` (or `ClientProviderFunc`).
+Use the SDK to attach provider-specific clients to each event. You can either inject your own clients or let the SDK resolve them from the webhook payload using the `providers` config.
 
 ## Pattern
 
@@ -36,3 +36,15 @@ wk.HandleTopic("pr.opened.ready", func(ctx context.Context, evt *worker.Event) e
 ```
 
 This keeps webhook payloads normalized in `evt.Normalized`, while the SDK gives you the correct provider client for API calls.
+
+## Auto-resolve clients from config
+
+```go
+wk := worker.New(
+  worker.WithSubscriber(sub),
+  worker.WithTopics("pr.opened.ready", "pr.merged"),
+  worker.WithClientProvider(worker.NewSCMClientProvider(cfg.Providers)),
+)
+```
+
+The `providers` section in your config includes the SCM auth settings (`app_id`, `private_key_path`, tokens, and base URLs).

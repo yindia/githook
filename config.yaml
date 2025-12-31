@@ -12,8 +12,8 @@ providers:
     enabled: true
     path: /webhooks/github
     secret: ${GITHUB_WEBHOOK_SECRET}
-    app_id: 0
-    private_key_path: /secrets/github.pem
+    app_id: ${GITHUB_APP_ID}
+    private_key_path: ${GITHUB_PRIVATE_KEY_PATH}
     base_url: https://api.github.com
   bitbucket:
     enabled: true

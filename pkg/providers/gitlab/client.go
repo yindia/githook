@@ -23,7 +23,7 @@ type Client struct {
 }
 
 // NewTokenClient returns a stub GitLab client.
-func NewTokenClient(cfg auth.GitLabConfig, token string) *Client {
+func NewTokenClient(cfg auth.ProviderConfig, token string) *Client {
 	if token == "" {
 		token = cfg.Token
 	}
