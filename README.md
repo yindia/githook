@@ -88,6 +88,7 @@ Docs:
 - [Getting started (Bitbucket)](docs/getting-started-bitbucket.md)
 - [Rules engine](docs/rules.md)
 - [Observability](docs/observability.md)
+- [SCM authentication](docs/scm-auth.md)
 - [Webhook setup](docs/webhooks.md)
 - [SDK client injection](docs/sdk_clients.md)
 
@@ -112,6 +113,22 @@ providers:
     enabled: false
     path: /webhooks/bitbucket
     secret: ${BITBUCKET_WEBHOOK_SECRET} # Optional, for X-Hook-UUID
+```
+
+### SCM Authentication
+
+```yaml
+providers:
+  github:
+    app_id: 123
+    private_key_path: /secrets/github.pem
+    base_url: https://api.github.com
+  gitlab:
+    token: glpat-xxxx
+    base_url: https://gitlab.com/api/v4
+  bitbucket:
+    token: bb-xxxx
+    base_url: https://api.bitbucket.org/2.0
 ```
 
 ### Server Limits

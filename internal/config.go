@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"githooks/pkg/auth"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,11 +27,7 @@ type AppConfig struct {
 		MetricsPath    string `yaml:"metrics_path"`
 	} `yaml:"server"`
 	// Providers contains configuration for each Git provider.
-	Providers struct {
-		GitHub    ProviderConfig `yaml:"github"`
-		GitLab    ProviderConfig `yaml:"gitlab"`
-		Bitbucket ProviderConfig `yaml:"bitbucket"`
-	} `yaml:"providers"`
+	Providers auth.Config `yaml:"providers"`
 	// Watermill holds configuration for the message router.
 	Watermill WatermillConfig `yaml:"watermill"`
 }
@@ -42,11 +40,7 @@ type Config struct {
 }
 
 // ProviderConfig represents the configuration for a single Git provider.
-type ProviderConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Path    string `yaml:"path"`
-	Secret  string `yaml:"secret"`
-}
+type ProviderConfig = auth.ProviderConfig
 
 // WatermillConfig holds the configuration for Watermill, which handles messaging.
 type WatermillConfig struct {

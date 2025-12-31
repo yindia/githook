@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"githooks/internal"
-	"githooks/webhook"
+	"githooks/pkg/webhook"
 
 	_ "github.com/lib/pq"
 )

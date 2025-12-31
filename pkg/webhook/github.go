@@ -2,9 +2,14 @@ package webhook
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
+	"errors"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"githooks/internal"
 
@@ -13,11 +18,13 @@ import (
 
 // GitHubHandler handles incoming webhooks from GitHub.
 type GitHubHandler struct {
-	hook      *github.Webhook
-	rules     *internal.RuleEngine
-	publisher internal.Publisher
-	logger    *log.Logger
-	maxBody   int64
+	hook         *github.Webhook
+	fallbackHook *github.Webhook
+	secret       string
+	rules        *internal.RuleEngine
+	publisher    internal.Publisher
+	logger       *log.Logger
+	maxBody      int64
 }
 
 var githubEvents = []github.Event{
@@ -75,11 +82,23 @@ func NewGitHubHandler(secret string, rules *internal.RuleEngine, publisher inter
 	if err != nil {
 		return nil, err
 	}
+	fallbackHook, err := github.New()
+	if err != nil {
+		return nil, err
+	}
 
 	if logger == nil {
 		logger = log.Default()
 	}
-	return &GitHubHandler{hook: hook, rules: rules, publisher: publisher, logger: logger, maxBody: maxBody}, nil
+	return &GitHubHandler{
+		hook:         hook,
+		fallbackHook: fallbackHook,
+		secret:       secret,
+		rules:        rules,
+		publisher:    publisher,
+		logger:       logger,
+		maxBody:      maxBody,
+	}, nil
 }
 
 // ServeHTTP handles an incoming HTTP request.
@@ -100,10 +119,20 @@ func (h *GitHubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := h.hook.Parse(r, githubEvents...)
 	if err != nil {
-		logger.Printf("github parse failed: %v", err)
-		internal.IncParseError("github")
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		if errors.Is(err, github.ErrMissingHubSignatureHeader) && h.secret != "" {
+			sha1Header := r.Header.Get("X-Hub-Signature")
+			if sha1Header != "" && verifyGitHubSHA1(h.secret, rawBody, sha1Header) {
+				logger.Printf("github parse warning: %v; accepted sha1 signature", err)
+				r.Body = io.NopCloser(bytes.NewReader(rawBody))
+				payload, err = h.fallbackHook.Parse(r, githubEvents...)
+			}
+		}
+		if err != nil {
+			logger.Printf("github parse failed: %v", err)
+			internal.IncParseError("github")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
 	eventName := r.Header.Get("X-GitHub-Event")
@@ -134,4 +163,15 @@ func (h *GitHubHandler) emit(r *http.Request, logger *log.Logger, event internal
 			logger.Printf("publish %s failed: %v", match.Topic, err)
 		}
 	}
+}
+
+func verifyGitHubSHA1(secret string, body []byte, signature string) bool {
+	if secret == "" || len(body) == 0 || signature == "" {
+		return false
+	}
+	signature = strings.TrimPrefix(signature, "sha1=")
+	mac := hmac.New(sha1.New, []byte(secret))
+	_, _ = mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(signature), []byte(expected))
 }

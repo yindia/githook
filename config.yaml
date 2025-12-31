@@ -2,33 +2,65 @@ server:
   port: 8080
 
 providers:
+  gitlab:
+    enabled: true
+    path: /webhooks/gitlab
+    secret: ${GITLAB_WEBHOOK_SECRET}
+    token: ${GITLAB_ACCESS_TOKEN}
+    base_url: https://gitlab.com/api/v4
   github:
     enabled: true
     path: /webhooks/github
     secret: ${GITHUB_WEBHOOK_SECRET}
-
+    app_id: 0
+    private_key_path: /secrets/github.pem
+    base_url: https://api.github.com
+  bitbucket:
+    enabled: true
+    path: /webhooks/bitbucket
+    secret: ${BITBUCKET_WEBHOOK_SECRET}
+    token: ${BITBUCKET_ACCESS_TOKEN}
+    base_url: https://api.bitbucket.org/2.0
 watermill:
-  drivers: [amqp,sql,http,kafka,nats]
+  drivers: [amqp,http]
   amqp:
     url: amqp://guest:guest@localhost:5672/
     mode: durable_queue
-  nats:
-    cluster_id: test-cluster
-    client_id: githooks
-    url: nats://localhost:4222
-  kafka:
-    brokers: ["localhost:29092"]
+  # nats:
+  #   cluster_id: test-cluster
+  #   client_id: githooks
+  #   url: nats://localhost:4222
+  # kafka:
+  #   brokers: ["localhost:29092"]
   http:
     mode: base_url
-    base_url: http://localhost:8081
-  sql:
-    driver: postgres
-    dsn: postgres://githooks:githooks@localhost:5432/githooks?sslmode=disable
-    dialect: postgres
-    auto_initialize_schema: true
+    base_url: https://webhook.site/0e0f5ad1-b451-4432-81ea-0d57ab6d7f23
+  # sql:
+  #   driver: postgres
+  #   dsn: postgres://githooks:githooks@localhost:5432/githooks?sslmode=disable
+  #   dialect: postgres
+  #   auto_initialize_schema: true
 rules:
   - when: action == "opened" && pull_request.draft == false
-    emit: pr.opened.ready
+    emit: github.pr.opened.ready
 
   - when: action == "closed" && pull_request.merged == true
-    emit: pr.merged
+    emit: github.pr.merged
+
+  - when: installation.id != null
+    emit: github.app.action
+
+  - when: head_commit.id != "" && commits[0].id != "" && commits[1] == nil
+    emit: github.commit.created
+
+  - when: ref_type == "tag"
+    emit: github.tag.created
+
+  - when: object_kind == "merge_request" && object_attributes.state == "opened"
+    emit: gitlab.mr.opened
+
+  - when: object_kind == "push" && project.name == "test" && repository.url == "git@gitlab.com:evalsocket2/test.git" 
+    emit: gitlab.mr.merged
+
+  - when: object_kind == "push" && project.name == "test" && project.namespace == "evalsocket" 
+    emit: gitlab.push
