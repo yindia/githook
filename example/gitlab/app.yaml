@@ -6,6 +6,8 @@ providers:
     enabled: true
     path: /webhooks/gitlab
     secret: ${GITLAB_WEBHOOK_SECRET}
+    token: ${GITLAB_ACCESS_TOKEN}
+    base_url: https://gitlab.com/api/v4
 
 watermill:
   driver: gochannel

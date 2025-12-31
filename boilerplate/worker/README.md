@@ -7,6 +7,8 @@ This folder provides a starting point for building a worker that consumes Githoo
 1. Start the server:
 ```sh
 export GITHUB_WEBHOOK_SECRET=devsecret
+export GITHUB_APP_ID=123
+export GITHUB_PRIVATE_KEY_PATH=/path/to/github.pem
 
 go run ./main.go -config boilerplate/worker/config.yaml
 ```
@@ -54,7 +56,11 @@ docker compose -f boilerplate/worker/docker-compose.yaml up -d
 Build and run the worker container:
 ```sh
 docker build -f boilerplate/worker/Dockerfile -t githooks-worker .
-docker run --rm -e GITHUB_WEBHOOK_SECRET=devsecret githooks-worker -config /app/config.yaml
+docker run --rm \
+  -e GITHUB_WEBHOOK_SECRET=devsecret \
+  -e GITHUB_APP_ID=123 \
+  -e GITHUB_PRIVATE_KEY_PATH=/secrets/github.pem \
+  githooks-worker -config /app/config.yaml
 ```
 
 ## Helm

@@ -6,6 +6,8 @@ providers:
     enabled: true
     path: /webhooks/bitbucket
     secret: ${BITBUCKET_WEBHOOK_SECRET}
+    token: ${BITBUCKET_ACCESS_TOKEN}
+    base_url: https://api.bitbucket.org/2.0
 
 watermill:
   driver: gochannel

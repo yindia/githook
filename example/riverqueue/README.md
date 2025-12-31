@@ -15,6 +15,8 @@ River requires database migrations before jobs can be processed.
 ## 3) Run the server
 ```sh
 export GITHUB_WEBHOOK_SECRET=devsecret
+export GITHUB_APP_ID=123
+export GITHUB_PRIVATE_KEY_PATH=/path/to/github.pem
 
 go run ./main.go -config example/riverqueue/app.yaml
 ```

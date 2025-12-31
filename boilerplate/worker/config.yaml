@@ -6,14 +6,21 @@ providers:
     enabled: true
     path: /webhooks/github
     secret: ${GITHUB_WEBHOOK_SECRET}
+    app_id: ${GITHUB_APP_ID}
+    private_key_path: ${GITHUB_PRIVATE_KEY_PATH}
+    base_url: https://api.github.com
   gitlab:
     enabled: false
     path: /webhooks/gitlab
     secret: ${GITLAB_WEBHOOK_SECRET}
+    token: ${GITLAB_ACCESS_TOKEN}
+    base_url: https://gitlab.com/api/v4
   bitbucket:
     enabled: false
     path: /webhooks/bitbucket
     secret: ${BITBUCKET_WEBHOOK_SECRET}
+    token: ${BITBUCKET_ACCESS_TOKEN}
+    base_url: https://api.bitbucket.org/2.0
 
 watermill:
   driver: amqp

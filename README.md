@@ -6,13 +6,15 @@ Githooks is a config-driven webhook router and worker SDK for GitHub, GitLab, an
 
 ## Features
 
-
 - **Multi-Provider Support**: Handles webhooks from GitHub, GitLab, and Bitbucket.
-- **Normalized Events**: Converts provider-specific payloads into a consistent, easy-to-use format.
-- **Powerful Rule Engine**: Filter and route events using YAML-based rules with JSONPath and boolean logic.
-- **Flexible Publishing**: Publish events to multiple message queues and protocols via Watermill (GoChannel, Kafka, NATS, AMQP, SQL, HTTP, and more).
-- **Stateless & Scalable**: The server is stateless and can be scaled horizontally.
-- **Simple Worker SDK**: A lightweight SDK for building event consumers.
+- **Rule Engine**: JSONPath + boolean rules with multi-match support.
+- **Raw Payload Publishing**: Publishes raw webhook payloads with metadata (`provider`, `event`, `request_id`).
+- **Flexible Publishing**: Watermill drivers for AMQP, NATS Streaming, Kafka, HTTP, SQL, GoChannel, RiverQueue.
+- **Multi-Driver Fan-Out**: Publish to all drivers by default or target per rule.
+- **Worker SDK**: Concurrency, middleware, topics, and graceful shutdown.
+- **SCM Auth Resolution**: GitHub App (JWT → installation token), GitLab token, Bitbucket token.
+- **Observability**: Request IDs, expvar counters, and rate limiting.
+- **Ship-Ready Assets**: Docker Compose, examples, boilerplate, Helm charts.
 
 ## Table of Contents
 
@@ -97,7 +99,7 @@ Requests use or generate `X-Request-Id`, which is echoed back in responses and i
 
 ### Providers
 
-The `providers` section configures the webhook endpoints for each Git provider.
+The `providers` section configures webhook endpoints and SCM auth for each Git provider.
 
 ```yaml
 providers:

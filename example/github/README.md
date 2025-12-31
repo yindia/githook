@@ -5,10 +5,13 @@ This example sends a GitHub pull_request webhook to the local githooks server.
 ## Prerequisites
 - githooks running on `http://localhost:8080`
 - `GITHUB_WEBHOOK_SECRET` set to the same value in your config
+- Optional SCM auth: `GITHUB_APP_ID` and `GITHUB_PRIVATE_KEY_PATH`
 
 ## Run
 ```sh
 export GITHUB_WEBHOOK_SECRET=devsecret
+export GITHUB_APP_ID=123
+export GITHUB_PRIVATE_KEY_PATH=/path/to/github.pem
 ./scripts/send_webhook.sh github pull_request example/github/pull_request.json
 ```
 
@@ -22,7 +25,7 @@ Example config (rules) is in `example/github/app.yaml`.
 ## Alternate payload
 Pass a JSON file to send a different payload:
 ```sh
-./example/github/send_webhook.sh /path/to/your.json
+./scripts/send_webhook.sh github pull_request /path/to/your.json
 ```
 
 ## Notes
