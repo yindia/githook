@@ -1,6 +1,6 @@
 # SDK Client Injection
 
-Use the SDK to attach provider-specific clients to each event. You can either inject your own clients or let the SDK resolve them from the webhook payload using the `providers` config.
+Use the SDK to attach provider-specific clients to each event. You can either inject your own clients or let the SDK resolve them from the webhook payload using the `providers` config. The SDK returns a ready-to-use provider SDK client so you do not have to construct it yourself.
 
 ## Pattern
 
@@ -22,13 +22,13 @@ wk := worker.New(
 wk.HandleTopic("pr.opened.ready", func(ctx context.Context, evt *worker.Event) error {
   switch evt.Provider {
   case "github":
-    gh := evt.Client.(*github.Client)
+    gh, _ := worker.GitHubClient(evt)
     _ = gh
   case "gitlab":
-    gl := evt.Client.(*gitlab.Client)
+    gl, _ := worker.GitLabClient(evt)
     _ = gl
   case "bitbucket":
-    bb := evt.Client.(*bitbucket.Client)
+    bb, _ := worker.BitbucketClient(evt)
     _ = bb
   }
   return nil

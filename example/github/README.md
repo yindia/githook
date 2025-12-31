@@ -44,6 +44,9 @@ This worker subscribes to `github.pull_request` and runs custom logic.
 go run ./example/github/worker
 ```
 
+The example uses `worker.NewSCMClientProvider` to return the official GitHub SDK client
+(`go-github`) without any manual client construction.
+
 To target a single subscriber driver (when `watermill.drivers` is set), pass `-driver`:
 ```sh
 go run ./example/github/worker -driver amqp

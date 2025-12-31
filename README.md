@@ -291,6 +291,7 @@ The `example/` directory contains several working examples:
 -   **`example/github`**: A simple server and worker for handling GitHub webhooks.
 -   **`example/realworld`**: A more complex setup with multiple workers consuming events from a single topic.
 -   **`example/riverqueue`**: Demonstrates publishing events to a [River](https://github.com/riverqueue/river) job queue.
+-   **`example/vercel`**: Production-style preview/production deploy hooks for Vercel.
 -   **`example/gitlab`**: Sample setup for GitLab webhooks.
 -   **`example/bitbucket`**: Sample setup for Bitbucket webhooks.
 

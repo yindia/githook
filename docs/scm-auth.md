@@ -22,9 +22,9 @@ providers:
 
 1. Webhook arrives and is parsed (unchanged).
 2. Resolve auth from the webhook payload.
-3. Create an SCM client and call the provider API.
+3. Create an SCM client and call the provider API. The SDK returns the client instance so you do not have to construct it yourself.
 
-## Example: webhook → auth → API call
+## Example: webhook → auth → client
 
 ```go
 resolver := auth.NewResolver(cfg.Providers)
@@ -45,18 +45,19 @@ if err != nil {
 switch authCtx.Provider {
 case "github":
 	gh := client.(*github.Client)
-	_, err = gh.GetRepo(ctx, "acme", "demo")
+	_ = gh // use gh for API calls you need
 case "gitlab":
 	gl := client.(*gitlab.Client)
-	_, err = gl.GetRepo(ctx, "acme", "demo")
+	_ = gl
 case "bitbucket":
 	bb := client.(*bitbucket.Client)
-	_, err = bb.GetRepo(ctx, "acme", "demo")
+	_ = bb
 }
-return err
+return nil
 ```
 
 ## Notes
 
 - GitHub uses GitHub App authentication. Tokens are short-lived and never persisted.
 - GitLab and Bitbucket use access tokens from config.
+- Provider clients are intentionally minimal; inject your own clients if you need a full API surface.

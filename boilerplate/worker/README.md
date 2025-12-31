@@ -27,6 +27,7 @@ go run ./boilerplate/worker -config boilerplate/worker/config.yaml
 - Update `boilerplate/worker/controllers/` with your handlers.
 - Update `boilerplate/worker/main.go` to register handlers.
 - Update `boilerplate/worker/config.yaml` with your broker config and rules.
+  - The worker auto-resolves SCM clients from `providers.*` using `worker.NewSCMClientProvider`.
 
 ## Env
 Copy the env file and update secrets:

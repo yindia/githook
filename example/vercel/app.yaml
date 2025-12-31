@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+providers:
+  github:
+    enabled: true
+    path: /webhooks/github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+    app_id: ${GITHUB_APP_ID}
+    private_key_path: ${GITHUB_PRIVATE_KEY_PATH}
+    base_url: https://api.github.com
+
+watermill:
+  driver: gochannel
+
+rules:
+  - when: action == "opened" && pull_request.draft == false && pull_request.base.ref == "dummy-preview-branch" && repository.full_name == "dummy-org/dummy-repo"
+    emit: vercel.preview
+
+  - when: action == "synchronize" && pull_request.draft == false && pull_request.base.ref == "dummy-preview-branch" && repository.full_name == "dummy-org/dummy-repo"
+    emit: vercel.preview
+
+  - when: action == "reopened" && pull_request.draft == false && pull_request.base.ref == "dummy-preview-branch" && repository.full_name == "dummy-org/dummy-repo"
+    emit: vercel.preview
+
+  - when: action == "closed" && pull_request.merged == true && pull_request.base.ref == "dummy-prod-branch" && repository.full_name == "dummy-org/dummy-repo"
+    emit: vercel.production
+
+
+  - when: action == "created" && issue.pull_request != null && repository.full_name == "dummy-org/dummy-repo"
+    emit: pr.comment.created
