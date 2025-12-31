@@ -42,7 +42,17 @@ if err != nil {
 	return err
 }
 
-_, err = client.GetRepo(ctx, "acme", "demo")
+switch authCtx.Provider {
+case "github":
+	gh := client.(*github.Client)
+	_, err = gh.GetRepo(ctx, "acme", "demo")
+case "gitlab":
+	gl := client.(*gitlab.Client)
+	_, err = gl.GetRepo(ctx, "acme", "demo")
+case "bitbucket":
+	bb := client.(*bitbucket.Client)
+	_, err = bb.GetRepo(ctx, "acme", "demo")
+}
 return err
 ```
 

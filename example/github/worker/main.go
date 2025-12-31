@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"githooks/internal"
+	"githooks/pkg/providers/github"
 	worker "githooks/pkg/worker"
 
 	_ "github.com/lib/pq"
@@ -47,9 +49,13 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	subCfg, err := worker.LoadSubscriberConfig(*configPath)
+	appCfg, err := internal.LoadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("load config: %v", err)
+	}
+	subCfg, err := worker.LoadSubscriberConfig(*configPath)
+	if err != nil {
+		log.Fatalf("load subscriber config: %v", err)
 	}
 	if *driver != "" {
 		subCfg.Driver = *driver
@@ -66,18 +72,12 @@ func main() {
 		}
 	}()
 
-	clientProvider := worker.ProviderClients{
-		GitHub: func(ctx context.Context, evt *worker.Event) (interface{}, error) {
-			return newGitHubAppClient(), nil
-		},
-	}
-
 	wk := worker.New(
 		worker.WithSubscriber(sub),
 		worker.WithTopics("pr.opened.ready", "pr.merged"),
 		worker.WithConcurrency(5),
 		worker.WithRetry(retryOnce{}),
-		worker.WithClientProvider(clientProvider),
+		worker.WithClientProvider(worker.NewSCMClientProvider(appCfg.Providers)),
 		worker.WithListener(worker.Listener{
 			OnStart: func(ctx context.Context) { log.Println("worker started") },
 			OnExit:  func(ctx context.Context) { log.Println("worker stopped") },
@@ -100,7 +100,7 @@ func main() {
 		}
 
 		if evt.Client != nil {
-			gh := evt.Client.(*githubAppClient)
+			gh := evt.Client.(*github.Client)
 			_ = gh
 		}
 
@@ -123,7 +123,7 @@ func main() {
 		}
 
 		if evt.Client != nil {
-			gh := evt.Client.(*githubAppClient)
+			gh := evt.Client.(*github.Client)
 			_ = gh
 		}
 
@@ -140,10 +140,4 @@ func main() {
 	if err := wk.Run(exampleCtx); err != nil {
 		log.Fatal(err)
 	}
-}
-
-type githubAppClient struct{}
-
-func newGitHubAppClient() *githubAppClient {
-	return &githubAppClient{}
 }

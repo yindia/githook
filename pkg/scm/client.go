@@ -10,12 +10,9 @@ import (
 	"githooks/pkg/providers/gitlab"
 )
 
-// SCMClient defines a minimal SCM API surface.
-type SCMClient interface {
-	GetRepo(ctx context.Context, owner, repo string) (map[string]interface{}, error)
-	ListRepos(ctx context.Context) ([]map[string]interface{}, error)
-	CreatePR(ctx context.Context, owner, repo, title, head, base, body string) (map[string]interface{}, error)
-}
+// SCMClient is a provider-specific API client.
+// Use type assertions to access the provider client you need.
+type SCMClient interface{}
 
 // Factory builds SCM clients using resolved auth contexts.
 type Factory struct {

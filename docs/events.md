@@ -1,10 +1,10 @@
 # Event Compatibility
 
-Githooks preserves provider event names in `Event.Name` and sets `Event.Provider` to the source system. Rules should target normalized payload fields, not provider-specific envelope fields.
+Githooks preserves provider event names in `Event.Name` and sets `Event.Provider` to the source system. Rules should target payload fields, not provider-specific envelope fields.
 
 ## GitHub
 - Header: `X-GitHub-Event`
-- Signature: `X-Hub-Signature` (HMAC SHA-1)
+- Signature: `X-Hub-Signature-256` (HMAC SHA-256). `X-Hub-Signature` (HMAC SHA-1) is accepted for GitHub Enterprise Server.
 - Path: `/webhooks/github`
 
 ## GitLab
