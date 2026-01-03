@@ -2,22 +2,28 @@ package webhook
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 
 	"githooks/internal"
+	"githooks/pkg/storage"
 
 	"github.com/go-playground/webhooks/v6/gitlab"
 )
 
 // GitLabHandler handles incoming webhooks from GitLab.
 type GitLabHandler struct {
-	hook      *gitlab.Webhook
-	rules     *internal.RuleEngine
-	publisher internal.Publisher
-	logger    *log.Logger
-	maxBody   int64
+	hook        *gitlab.Webhook
+	rules       *internal.RuleEngine
+	publisher   internal.Publisher
+	logger      *log.Logger
+	maxBody     int64
+	debugEvents bool
+	namespaces  storage.NamespaceStore
 }
 
 var gitlabEvents = []gitlab.Event{
@@ -37,7 +43,7 @@ var gitlabEvents = []gitlab.Event{
 }
 
 // NewGitLabHandler creates a new GitLabHandler.
-func NewGitLabHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger, maxBody int64) (*GitLabHandler, error) {
+func NewGitLabHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger, maxBody int64, debugEvents bool, namespaces storage.NamespaceStore) (*GitLabHandler, error) {
 	options := make([]gitlab.Option, 0, 1)
 	if secret != "" {
 		options = append(options, gitlab.Options.Secret(secret))
@@ -49,7 +55,7 @@ func NewGitLabHandler(secret string, rules *internal.RuleEngine, publisher inter
 	if logger == nil {
 		logger = log.Default()
 	}
-	return &GitLabHandler{hook: hook, rules: rules, publisher: publisher, logger: logger, maxBody: maxBody}, nil
+	return &GitLabHandler{hook: hook, rules: rules, publisher: publisher, logger: logger, maxBody: maxBody, debugEvents: debugEvents, namespaces: namespaces}, nil
 }
 
 // ServeHTTP handles an incoming HTTP request.
@@ -60,7 +66,6 @@ func (h *GitLabHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	w.Header().Set("X-Request-Id", reqID)
 	logger := internal.WithRequestID(h.logger, reqID)
-	internal.IncRequest("gitlab")
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -68,10 +73,13 @@ func (h *GitLabHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = io.NopCloser(bytes.NewReader(rawBody))
 
+	if h.debugEvents {
+		logDebugEvent(logger, "gitlab", r.Header.Get("X-Gitlab-Event"), rawBody)
+	}
+
 	payload, err := h.hook.Parse(r, gitlabEvents...)
 	if err != nil {
 		logger.Printf("gitlab parse failed: %v", err)
-		internal.IncParseError("gitlab")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -80,6 +88,7 @@ func (h *GitLabHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch payload.(type) {
 	default:
 		rawObject, data := rawObjectAndFlatten(rawBody)
+		stateID := h.resolveStateID(r.Context(), rawBody)
 		h.emit(r, logger, internal.Event{
 			Provider:   "gitlab",
 			Name:       eventName,
@@ -87,10 +96,38 @@ func (h *GitLabHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Data:       data,
 			RawPayload: rawBody,
 			RawObject:  rawObject,
+			StateID:    stateID,
 		})
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *GitLabHandler) resolveStateID(ctx context.Context, raw []byte) string {
+	if h.namespaces == nil {
+		return ""
+	}
+	var payload struct {
+		Project struct {
+			ID int64 `json:"id"`
+		} `json:"project"`
+		ProjectID int64 `json:"project_id"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return ""
+	}
+	repoID := payload.Project.ID
+	if repoID == 0 {
+		repoID = payload.ProjectID
+	}
+	if repoID == 0 {
+		return ""
+	}
+	record, err := h.namespaces.GetNamespace(ctx, "gitlab", strconv.FormatInt(repoID, 10))
+	if err != nil || record == nil {
+		return ""
+	}
+	return record.AccountID
 }
 
 func (h *GitLabHandler) emit(r *http.Request, logger *log.Logger, event internal.Event) {

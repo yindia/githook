@@ -55,22 +55,6 @@ func (r *DefaultResolver) Resolve(_ context.Context, event EventContext) (AuthCo
 			Provider:       "github",
 			InstallationID: installationID,
 		}, nil
-	case "gitlab":
-		if r.cfg.GitLab.Token == "" {
-			return AuthContext{}, errors.New("gitlab token is required")
-		}
-		return AuthContext{
-			Provider: "gitlab",
-			Token:    r.cfg.GitLab.Token,
-		}, nil
-	case "bitbucket":
-		if r.cfg.Bitbucket.Token == "" {
-			return AuthContext{}, errors.New("bitbucket token is required")
-		}
-		return AuthContext{
-			Provider: "bitbucket",
-			Token:    r.cfg.Bitbucket.Token,
-		}, nil
 	default:
 		return AuthContext{}, errors.New("unsupported provider for auth resolution")
 	}

@@ -8,12 +8,12 @@ Githooks is a config-driven webhook router and worker SDK for GitHub, GitLab, an
 
 - **Multi-Provider Support**: Handles webhooks from GitHub, GitLab, and Bitbucket.
 - **Rule Engine**: JSONPath + boolean rules with multi-match support.
-- **Raw Payload Publishing**: Publishes raw webhook payloads with metadata (`provider`, `event`, `request_id`).
+- **Raw Payload Publishing**: Publishes raw webhook payloads with metadata (`provider`, `event`, `request_id`, `state_id` when available).
 - **Flexible Publishing**: Watermill drivers for AMQP, NATS Streaming, Kafka, HTTP, SQL, GoChannel, RiverQueue.
 - **Multi-Driver Fan-Out**: Publish to all drivers by default or target per rule.
 - **Worker SDK**: Concurrency, middleware, topics, and graceful shutdown.
-- **SCM Auth Resolution**: GitHub App (JWT → installation token), GitLab token, Bitbucket token.
-- **Observability**: Request IDs, expvar counters, and rate limiting.
+- **SCM Auth Resolution**: GitHub App (JWT → installation token), GitLab/Bitbucket OAuth tokens stored on install.
+- **Observability**: Request IDs and structured logs.
 - **Ship-Ready Assets**: Docker Compose, examples, boilerplate, Helm charts.
 
 ## Table of Contents
@@ -91,6 +91,8 @@ Docs:
 - [Rules engine](docs/rules.md)
 - [Observability](docs/observability.md)
 - [SCM authentication](docs/scm-auth.md)
+- [Installation storage](docs/storage.md)
+- [OAuth callbacks](docs/oauth-callbacks.md)
 - [Webhook setup](docs/webhooks.md)
 - [SDK client injection](docs/sdk_clients.md)
 
@@ -100,28 +102,32 @@ Requests use or generate `X-Request-Id`, which is echoed back in responses and i
 ### Providers
 
 The `providers` section configures webhook endpoints and SCM auth for each Git provider.
+If `path` is omitted, defaults are used: `/webhooks/github`, `/webhooks/gitlab`, `/webhooks/bitbucket`.
+Set `server.public_base_url` when running behind ngrok or a reverse proxy so OAuth callbacks resolve to your public domain.
 
 ```yaml
 providers:
   github:
     enabled: true
-    path: /webhooks/github
     secret: ${GITHUB_WEBHOOK_SECRET}
     app_id: ${GITHUB_APP_ID}
     private_key_path: ${GITHUB_PRIVATE_KEY_PATH}
+    app_slug: ${GITHUB_APP_SLUG}
+    web_base_url: https://github.com
     base_url: https://api.github.com
+    oauth_scopes: ["read:user"]
   gitlab:
     enabled: false
-    path: /webhooks/gitlab
     secret: ${GITLAB_WEBHOOK_SECRET} # Optional
-    token: ${GITLAB_ACCESS_TOKEN}
     base_url: https://gitlab.com/api/v4
+    web_base_url: https://gitlab.com
+    oauth_scopes: ["read_api"]
   bitbucket:
     enabled: false
-    path: /webhooks/bitbucket
     secret: ${BITBUCKET_WEBHOOK_SECRET} # Optional, for X-Hook-UUID
-    token: ${BITBUCKET_ACCESS_TOKEN}
     base_url: https://api.bitbucket.org/2.0
+    web_base_url: https://bitbucket.org
+    oauth_scopes: ["repository"]
 ```
 
 ### SCM Authentication
@@ -131,13 +137,15 @@ providers:
   github:
     app_id: 123
     private_key_path: /secrets/github.pem
+    app_slug: githooks
     base_url: https://api.github.com
+    web_base_url: https://github.com
   gitlab:
-    token: glpat-xxxx
     base_url: https://gitlab.com/api/v4
+    web_base_url: https://gitlab.com
   bitbucket:
-    token: bb-xxxx
     base_url: https://api.bitbucket.org/2.0
+    web_base_url: https://bitbucket.org
 ```
 
 ### Server Limits
@@ -145,16 +153,66 @@ providers:
 ```yaml
 server:
   port: 8080
+  public_base_url: https://app.example.com
   read_timeout_ms: 5000
   write_timeout_ms: 10000
   idle_timeout_ms: 60000
   read_header_timeout_ms: 5000
   max_body_bytes: 1048576
-  rate_limit_rps: 0
-  rate_limit_burst: 0
-  metrics_enabled: false
-  metrics_path: /metrics
+  debug_events: false
 ```
+
+### Installation Storage
+
+```yaml
+storage:
+  driver: postgres
+  dsn: postgres://githooks:githooks@localhost:5432/githooks?sslmode=disable
+  dialect: postgres
+  auto_migrate: true
+```
+
+### OAuth Callbacks
+
+```yaml
+oauth:
+  redirect_base_url: https://app.example.com/oauth/complete
+```
+
+Callback endpoints:
+- `/oauth/github/callback`
+- `/oauth/gitlab/callback`
+- `/oauth/bitbucket/callback`
+
+GitHub App installs are initiated from the GitHub App installation page. The GitHub callback is only used when "Request user authorization" is enabled in the app settings.
+
+### API Endpoints
+
+```text
+GET /api/installations?state_id=<id>&provider=github|gitlab|bitbucket
+GET /api/namespaces?state_id=<id>&provider=...&owner=...&repo=...&full_name=...
+GET /api/namespaces/sync?state_id=<id>&provider=github|gitlab|bitbucket
+GET /api/webhooks/namespace?state_id=<id>&provider=...&repo_id=...
+POST /api/webhooks/namespace?state_id=<id>&provider=...&repo_id=...&enabled=true|false
+```
+
+Notes:
+- GitHub webhooks are always enabled by the GitHub App and cannot be toggled here.
+- GitLab/Bitbucket will create/delete the provider webhook when toggled.
+
+These endpoints return JSON with installation rows or namespace rows for the given `state_id`.
+
+### Install/Authorize Entry
+
+Start an install/authorize flow by redirecting users to:
+
+```
+http://localhost:8080/?provider=github
+http://localhost:8080/?provider=gitlab
+http://localhost:8080/?provider=bitbucket
+```
+
+GitHub uses the App installation URL. GitLab/Bitbucket use OAuth authorize URLs built from `providers.*` config.
 
 ### Watermill Drivers (Publishing)
 

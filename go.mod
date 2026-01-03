@@ -12,16 +12,25 @@ require (
 	github.com/ThreeDotsLabs/watermill-nats v1.0.7
 	github.com/ThreeDotsLabs/watermill-sql v1.4.0
 	github.com/go-playground/webhooks/v6 v6.2.0
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/google/go-github/v57 v57.0.0
 	github.com/jackc/pgx/v5 v5.8.0
+	github.com/ktrysmt/go-bitbucket v0.9.88
 	github.com/lib/pq v1.3.0
 	github.com/nats-io/stan.go v0.10.0
 	github.com/riverqueue/river v0.29.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.29.0
+	github.com/xanzy/go-gitlab v0.115.0
+	golang.org/x/net v0.47.0
+	golang.org/x/oauth2 v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
+	gorm.io/driver/mysql v1.6.0
+	gorm.io/driver/postgres v1.6.0
+	gorm.io/driver/sqlite v1.6.0
+	gorm.io/gorm v1.30.0
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/PaesslerAG/gval v1.0.0 // indirect
 	github.com/Shopify/sarama v1.23.1 // indirect
@@ -33,14 +42,13 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-chi/render v1.0.3 // indirect
+	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/google/go-github/v57 v57.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
@@ -50,9 +58,11 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
-	github.com/ktrysmt/go-bitbucket v0.9.88 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/minio/highwayhash v1.0.3 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nats-io/jwt/v2 v2.8.0 // indirect
@@ -74,17 +84,13 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	github.com/xanzy/go-gitlab v0.115.0 // indirect
 	go.etcd.io/bbolt v1.4.3 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/oauth2 v0.33.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/dnsutils.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/gokrb5.v7 v7.3.0 // indirect

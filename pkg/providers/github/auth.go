@@ -63,6 +63,60 @@ func newAppAuthenticator(cfg AppConfig) *appAuthenticator {
 	}
 }
 
+// InstallationAccount contains the account identity for a GitHub App installation.
+type InstallationAccount struct {
+	ID   string
+	Name string
+	Type string
+}
+
+// FetchInstallationAccount fetches the account identity for a GitHub App installation.
+func FetchInstallationAccount(ctx context.Context, cfg AppConfig, installationID int64) (InstallationAccount, error) {
+	if installationID == 0 {
+		return InstallationAccount{}, errors.New("installation id is required")
+	}
+	authenticator := newAppAuthenticator(cfg)
+	jwt, err := authenticator.jwt()
+	if err != nil {
+		return InstallationAccount{}, err
+	}
+	endpoint := fmt.Sprintf("%s/app/installations/%d", authenticator.baseURL, installationID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return InstallationAccount{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+jwt)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := authenticator.client.Do(req)
+	if err != nil {
+		return InstallationAccount{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return InstallationAccount{}, fmt.Errorf("github installation lookup failed: %s", strings.TrimSpace(string(body)))
+	}
+	var payload struct {
+		Account struct {
+			ID    int64  `json:"id"`
+			Login string `json:"login"`
+			Type  string `json:"type"`
+		} `json:"account"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return InstallationAccount{}, err
+	}
+	if payload.Account.ID == 0 {
+		return InstallationAccount{}, errors.New("github installation account missing")
+	}
+	return InstallationAccount{
+		ID:   fmt.Sprintf("%d", payload.Account.ID),
+		Name: payload.Account.Login,
+		Type: payload.Account.Type,
+	}, nil
+}
+
 func (a *appAuthenticator) installationToken(ctx context.Context, installationID int64) (string, error) {
 	jwt, err := a.jwt()
 	if err != nil {

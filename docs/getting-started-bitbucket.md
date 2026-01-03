@@ -53,7 +53,6 @@ If you use the optional `X-Hook-UUID` validation, set the secret:
 providers:
   bitbucket:
     enabled: true
-    path: /webhooks/bitbucket
     secret: ${BITBUCKET_WEBHOOK_SECRET}
 ```
 

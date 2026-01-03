@@ -1,6 +1,8 @@
 # Webhook Setup
 
-Use provider-native webhook configuration to point to the Githooks endpoints.
+Use provider-native webhook configuration to point to the Githooks endpoints. If
+you omit `providers.*.path` in config, defaults are `/webhooks/github`,
+`/webhooks/gitlab`, and `/webhooks/bitbucket`.
 
 ## GitHub (GitHub App)
 1. Create a GitHub App in your org/user settings.

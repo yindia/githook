@@ -45,42 +45,15 @@ func TestResolverGitHubMissingInstallation(t *testing.T) {
 	}
 }
 
-func TestResolverGitLabToken(t *testing.T) {
-	cfg := Config{
-		GitLab: ProviderConfig{
-			Token: "glpat-123",
-		},
-	}
+func TestResolverUnsupportedProvider(t *testing.T) {
+	cfg := Config{}
 	resolver := NewResolver(cfg)
 
-	authCtx, err := resolver.Resolve(context.Background(), EventContext{
+	_, err := resolver.Resolve(context.Background(), EventContext{
 		Provider: "gitlab",
 		Payload:  []byte(`{}`),
 	})
-	if err != nil {
-		t.Fatalf("resolve: %v", err)
-	}
-	if authCtx.Token != "glpat-123" {
-		t.Fatalf("expected gitlab token")
-	}
-}
-
-func TestResolverBitbucketToken(t *testing.T) {
-	cfg := Config{
-		Bitbucket: ProviderConfig{
-			Token: "bb-123",
-		},
-	}
-	resolver := NewResolver(cfg)
-
-	authCtx, err := resolver.Resolve(context.Background(), EventContext{
-		Provider: "bitbucket",
-		Payload:  []byte(`{}`),
-	})
-	if err != nil {
-		t.Fatalf("resolve: %v", err)
-	}
-	if authCtx.Token != "bb-123" {
-		t.Fatalf("expected bitbucket token")
+	if err == nil {
+		t.Fatalf("expected error for unsupported provider")
 	}
 }

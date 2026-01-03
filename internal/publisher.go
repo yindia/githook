@@ -258,6 +258,9 @@ func (w *watermillPublisher) Publish(ctx context.Context, topic string, event Ev
 	if event.RequestID != "" {
 		msg.Metadata.Set("request_id", event.RequestID)
 	}
+	if event.StateID != "" {
+		msg.Metadata.Set("state_id", event.StateID)
+	}
 	return w.publisher.Publish(topic, msg)
 }
 
@@ -309,7 +312,6 @@ func (m *publisherMux) PublishForDrivers(ctx context.Context, topic string, even
 		}
 		if publishErr := m.publishWithRetry(ctx, pub, topic, event); publishErr != nil {
 			err = errors.Join(err, publishErr)
-			IncPublishError(normalized)
 			if m.dlqDriver != "" && m.dlqDriver != normalized {
 				if dlq, ok := m.publishers[m.dlqDriver]; ok {
 					_ = m.publishWithRetry(ctx, dlq, topic, event)

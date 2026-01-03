@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -38,4 +39,11 @@ func requestID(r *http.Request) string {
 		return id
 	}
 	return watermill.NewUUID()
+}
+
+func logDebugEvent(logger *log.Logger, provider string, event string, body []byte) {
+	if logger == nil {
+		logger = log.Default()
+	}
+	logger.Printf("debug event provider=%s name=%s payload=%s", provider, event, string(body))
 }

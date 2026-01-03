@@ -2,23 +2,29 @@ package webhook
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"githooks/internal"
+	"githooks/pkg/storage"
 
 	"github.com/go-playground/webhooks/v6/bitbucket"
 )
 
 // BitbucketHandler handles incoming webhooks from Bitbucket.
 type BitbucketHandler struct {
-	hook      *bitbucket.Webhook
-	rules     *internal.RuleEngine
-	publisher internal.Publisher
-	logger    *log.Logger
-	maxBody   int64
+	hook        *bitbucket.Webhook
+	rules       *internal.RuleEngine
+	publisher   internal.Publisher
+	logger      *log.Logger
+	maxBody     int64
+	debugEvents bool
+	namespaces  storage.NamespaceStore
 }
 
 var bitbucketEvents = []bitbucket.Event{
@@ -43,7 +49,7 @@ var bitbucketEvents = []bitbucket.Event{
 }
 
 // NewBitbucketHandler creates a new BitbucketHandler.
-func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger, maxBody int64) (*BitbucketHandler, error) {
+func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher internal.Publisher, logger *log.Logger, maxBody int64, debugEvents bool, namespaces storage.NamespaceStore) (*BitbucketHandler, error) {
 	options := make([]bitbucket.Option, 0, 1)
 	if secret != "" {
 		options = append(options, bitbucket.Options.UUID(secret))
@@ -55,7 +61,7 @@ func NewBitbucketHandler(secret string, rules *internal.RuleEngine, publisher in
 	if logger == nil {
 		logger = log.Default()
 	}
-	return &BitbucketHandler{hook: hook, rules: rules, publisher: publisher, logger: logger, maxBody: maxBody}, nil
+	return &BitbucketHandler{hook: hook, rules: rules, publisher: publisher, logger: logger, maxBody: maxBody, debugEvents: debugEvents, namespaces: namespaces}, nil
 }
 
 // ServeHTTP handles an incoming HTTP request.
@@ -66,13 +72,16 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	w.Header().Set("X-Request-Id", reqID)
 	logger := internal.WithRequestID(h.logger, reqID)
-	internal.IncRequest("bitbucket")
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	r.Body = io.NopCloser(bytes.NewReader(rawBody))
+
+	if h.debugEvents {
+		logDebugEvent(logger, "bitbucket", r.Header.Get("X-Event-Key"), rawBody)
+	}
 
 	payload, err := h.hook.Parse(r, bitbucketEvents...)
 	if err != nil {
@@ -88,7 +97,6 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			logger.Printf("bitbucket parse failed: %v", err)
-			internal.IncParseError("bitbucket")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -98,6 +106,7 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch payload.(type) {
 	default:
 		rawObject, data := rawObjectAndFlatten(rawBody)
+		stateID := h.resolveStateID(r.Context(), rawBody)
 		h.emit(r, logger, internal.Event{
 			Provider:   "bitbucket",
 			Name:       eventName,
@@ -105,10 +114,34 @@ func (h *BitbucketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Data:       data,
 			RawPayload: rawBody,
 			RawObject:  rawObject,
+			StateID:    stateID,
 		})
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *BitbucketHandler) resolveStateID(ctx context.Context, raw []byte) string {
+	if h.namespaces == nil {
+		return ""
+	}
+	var payload struct {
+		Repository struct {
+			UUID string `json:"uuid"`
+		} `json:"repository"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return ""
+	}
+	repoID := strings.TrimSpace(payload.Repository.UUID)
+	if repoID == "" {
+		return ""
+	}
+	record, err := h.namespaces.GetNamespace(ctx, "bitbucket", repoID)
+	if err != nil || record == nil {
+		return ""
+	}
+	return record.AccountID
 }
 
 func (h *BitbucketHandler) emit(r *http.Request, logger *log.Logger, event internal.Event) {

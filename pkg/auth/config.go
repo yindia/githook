@@ -15,7 +15,12 @@ type ProviderConfig struct {
 
 	AppID          int64  `yaml:"app_id"`
 	PrivateKeyPath string `yaml:"private_key_path"`
+	AppSlug        string `yaml:"app_slug"`
+	WebBaseURL     string `yaml:"web_base_url"`
 
-	Token   string `yaml:"token"`
 	BaseURL string `yaml:"base_url"`
+
+	OAuthClientID     string   `yaml:"oauth_client_id"`
+	OAuthClientSecret string   `yaml:"oauth_client_secret"`
+	OAuthScopes       []string `yaml:"oauth_scopes"`
 }

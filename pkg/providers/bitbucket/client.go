@@ -16,10 +16,7 @@ type Client = bb.Client
 // NewTokenClient returns a Bitbucket SDK client using an OAuth bearer token.
 func NewTokenClient(cfg auth.ProviderConfig, token string) (*Client, error) {
 	if token == "" {
-		token = cfg.Token
-	}
-	if token == "" {
-		return nil, errors.New("bitbucket token is required")
+		return nil, errors.New("bitbucket access token is required")
 	}
 	if base := normalizeBaseURL(cfg.BaseURL); base != "" {
 		_ = os.Setenv("BITBUCKET_API_BASE_URL", base)

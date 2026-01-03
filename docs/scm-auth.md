@@ -1,6 +1,6 @@
 # SCM Authentication
 
-This guide covers runtime SCM authentication resolved from webhook context.
+This guide covers runtime SCM authentication resolved from webhook context. GitLab and Bitbucket use OAuth tokens stored on install.
 
 ## Configuration
 
@@ -11,10 +11,8 @@ providers:
     private_key_path: /secrets/github.pem
     base_url: https://api.github.com
   gitlab:
-    token: glpat-xxxx
     base_url: https://gitlab.com/api/v4
   bitbucket:
-    token: bb-xxxx
     base_url: https://api.bitbucket.org/2.0
 ```
 
@@ -59,5 +57,5 @@ return nil
 ## Notes
 
 - GitHub uses GitHub App authentication. Tokens are short-lived and never persisted.
-- GitLab and Bitbucket use access tokens from config.
+- GitLab and Bitbucket use access tokens stored during OAuth install.
 - Provider clients are intentionally minimal; inject your own clients if you need a full API surface.

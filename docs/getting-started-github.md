@@ -74,6 +74,8 @@ At this point, the full local loop works. Now let us wire real GitHub traffic in
 1. In the app settings, click **Install App**.
 2. Choose a test repository and install.
 
+Optional: you can also start the install flow by visiting `http://localhost:8080/?provider=github`, which redirects to the GitHub App install page when `providers.github.app_slug` is set.
+
 ### Update your config
 
 Set the webhook secret in `example/github/app.yaml` or export it as an env var:
@@ -82,7 +84,6 @@ Set the webhook secret in `example/github/app.yaml` or export it as an env var:
 providers:
   github:
     enabled: true
-    path: /webhooks/github
     secret: ${GITHUB_WEBHOOK_SECRET}
 ```
 

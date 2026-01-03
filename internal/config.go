@@ -16,20 +16,22 @@ type AppConfig struct {
 	// Server holds server-specific configuration.
 	Server struct {
 		Port           int    `yaml:"port"`
+		PublicBaseURL  string `yaml:"public_base_url"`
 		ReadTimeoutMS  int64  `yaml:"read_timeout_ms"`
 		WriteTimeoutMS int64  `yaml:"write_timeout_ms"`
 		IdleTimeoutMS  int64  `yaml:"idle_timeout_ms"`
 		ReadHeaderMS   int64  `yaml:"read_header_timeout_ms"`
 		MaxBodyBytes   int64  `yaml:"max_body_bytes"`
-		RateLimitRPS   int64  `yaml:"rate_limit_rps"`
-		RateLimitBurst int64  `yaml:"rate_limit_burst"`
-		MetricsEnabled bool   `yaml:"metrics_enabled"`
-		MetricsPath    string `yaml:"metrics_path"`
+		DebugEvents    bool   `yaml:"debug_events"`
 	} `yaml:"server"`
 	// Providers contains configuration for each Git provider.
 	Providers auth.Config `yaml:"providers"`
 	// Watermill holds configuration for the message router.
 	Watermill WatermillConfig `yaml:"watermill"`
+	// Storage holds configuration for installation storage.
+	Storage StorageConfig `yaml:"storage"`
+	// OAuth holds callback configuration for provider integrations.
+	OAuth OAuthConfig `yaml:"oauth"`
 }
 
 // Config represents the application configuration including rules.
@@ -112,6 +114,19 @@ type RiverQueueConfig struct {
 type PublishRetryConfig struct {
 	Attempts int `yaml:"attempts"`
 	DelayMS  int `yaml:"delay_ms"`
+}
+
+// StorageConfig holds configuration for SQL-backed installation storage.
+type StorageConfig struct {
+	Driver          string `yaml:"driver"`
+	DSN             string `yaml:"dsn"`
+	Dialect         string `yaml:"dialect"`
+	AutoMigrate     bool   `yaml:"auto_migrate"`
+}
+
+// OAuthConfig holds configuration for OAuth callbacks.
+type OAuthConfig struct {
+	RedirectBaseURL string `yaml:"redirect_base_url"`
 }
 
 // LoadAppConfig loads the main application configuration from a YAML file.
@@ -201,8 +216,14 @@ func applyDefaults(cfg *AppConfig) {
 	if cfg.Server.MaxBodyBytes == 0 {
 		cfg.Server.MaxBodyBytes = 1 << 20
 	}
-	if cfg.Server.MetricsPath == "" {
-		cfg.Server.MetricsPath = "/metrics"
+	if cfg.Providers.GitHub.Path == "" {
+		cfg.Providers.GitHub.Path = "/webhooks/github"
+	}
+	if cfg.Providers.GitLab.Path == "" {
+		cfg.Providers.GitLab.Path = "/webhooks/gitlab"
+	}
+	if cfg.Providers.Bitbucket.Path == "" {
+		cfg.Providers.Bitbucket.Path = "/webhooks/bitbucket"
 	}
 	if cfg.Providers.GitHub.Path == "" {
 		cfg.Providers.GitHub.Path = "/webhooks/github"

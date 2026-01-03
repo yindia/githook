@@ -53,7 +53,6 @@ Set the webhook secret in `example/gitlab/app.yaml` or export it as an env var:
 providers:
   gitlab:
     enabled: true
-    path: /webhooks/gitlab
     secret: ${GITLAB_WEBHOOK_SECRET}
 ```
 

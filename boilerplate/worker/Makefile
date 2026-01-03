@@ -27,6 +27,4 @@ docker-run:
 		-e GITHUB_WEBHOOK_SECRET \
 		-e GITHUB_APP_ID \
 		-e GITHUB_PRIVATE_KEY_PATH \
-		-e GITLAB_ACCESS_TOKEN \
-		-e BITBUCKET_ACCESS_TOKEN \
 		githooks-worker -config /app/config.yaml

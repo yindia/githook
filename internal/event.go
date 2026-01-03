@@ -14,4 +14,6 @@ type Event struct {
 	RawPayload []byte `json:"-"`
 	// RawObject is the unmarshalled JSON payload.
 	RawObject interface{} `json:"-"`
+	// StateID maps the event to an installation/account id for token lookup.
+	StateID string `json:"-"`
 }

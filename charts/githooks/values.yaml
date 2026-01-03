@@ -44,7 +44,6 @@ configYaml: |-
   providers:
     github:
       enabled: true
-      path: /webhooks/github
       secret: ${GITHUB_WEBHOOK_SECRET}
 
   watermill:

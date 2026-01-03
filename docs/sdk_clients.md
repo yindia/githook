@@ -35,6 +35,34 @@ wk.HandleTopic("pr.opened.ready", func(ctx context.Context, evt *worker.Event) e
 })
 ```
 
+## Resolve tokens in workers
+
+Use the server API to map `state_id` → stored tokens:
+
+```go
+providerClient, err := worker.ResolveProviderClient(ctx, evt)
+if err != nil {
+  return err
+}
+
+switch evt.Provider {
+case "github":
+  gh := providerClient.(*github.Client)
+  _ = gh
+case "gitlab":
+  gl := providerClient.(*gitlab.Client)
+  _ = gl
+case "bitbucket":
+  bb := providerClient.(*bitbucket.Client)
+  _ = bb
+}
+```
+
+By default it uses `GITHOOKS_API_BASE_URL`. If not set, it will read
+`GITHOOKS_CONFIG_PATH` (or `GITHOOKS_CONFIG`) and use `server.public_base_url`
+or `server.port` to build the URL. Otherwise it falls back to
+`http://localhost:8080`.
+
 This keeps webhook payloads normalized in `evt.Normalized`, while the SDK gives you the correct provider client for API calls.
 
 ## Auto-resolve clients from config

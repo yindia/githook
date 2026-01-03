@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"expvar"
 	"flag"
 	"net/http"
 	"os"
@@ -12,9 +11,15 @@ import (
 	"time"
 
 	"githooks/internal"
+	"githooks/pkg/auth"
+	"githooks/pkg/api"
+	"githooks/pkg/oauth"
+	"githooks/pkg/storage/installations"
+	"githooks/pkg/storage/namespaces"
 	"githooks/pkg/webhook"
 
-	_ "github.com/lib/pq"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 func main() {
@@ -42,7 +47,65 @@ func main() {
 	}
 	defer publisher.Close()
 
+	var installStore *installations.Store
+	var namespaceStore *namespaces.Store
+	if config.Storage.Driver != "" && config.Storage.DSN != "" {
+		store, err := installations.Open(installations.Config{
+			Driver:      config.Storage.Driver,
+			DSN:         config.Storage.DSN,
+			Dialect:     config.Storage.Dialect,
+			AutoMigrate: config.Storage.AutoMigrate,
+		})
+		if err != nil {
+			logger.Fatalf("storage: %v", err)
+		}
+		installStore = store
+		defer installStore.Close()
+		logger.Printf("storage enabled driver=%s dialect=%s table=githooks_installations", config.Storage.Driver, config.Storage.Dialect)
+
+		nsStore, err := namespaces.Open(namespaces.Config{
+			Driver:      config.Storage.Driver,
+			DSN:         config.Storage.DSN,
+			Dialect:     config.Storage.Dialect,
+			AutoMigrate: config.Storage.AutoMigrate,
+		})
+		if err != nil {
+			logger.Fatalf("namespaces storage: %v", err)
+		}
+		namespaceStore = nsStore
+		defer namespaceStore.Close()
+		logger.Printf("namespaces enabled driver=%s dialect=%s table=git_namespaces", config.Storage.Driver, config.Storage.Dialect)
+	} else {
+		logger.Printf("storage disabled (missing storage.driver or storage.dsn)")
+	}
+
 	mux := http.NewServeMux()
+	mux.Handle("/", &oauth.StartHandler{
+		Providers:     config.Providers,
+		PublicBaseURL: config.Server.PublicBaseURL,
+		Logger:        logger,
+	})
+	mux.Handle("/api/installations", &api.InstallationsHandler{
+		Store:  installStore,
+		Logger: logger,
+	})
+	mux.Handle("/api/namespaces", &api.NamespacesHandler{
+		Store:  namespaceStore,
+		Logger: logger,
+	})
+	mux.Handle("/api/namespaces/sync", &api.SyncNamespacesHandler{
+		InstallStore:  installStore,
+		NamespaceStore: namespaceStore,
+		Providers:     config.Providers,
+		Logger:        logger,
+	})
+	mux.Handle("/api/webhooks/namespace", &api.NamespaceWebhookHandler{
+		Store:         namespaceStore,
+		InstallStore:  installStore,
+		Providers:     config.Providers,
+		PublicBaseURL: config.Server.PublicBaseURL,
+		Logger:        logger,
+	})
 
 	if config.Providers.GitHub.Enabled {
 		ghHandler, err := webhook.NewGitHubHandler(
@@ -51,12 +114,19 @@ func main() {
 			publisher,
 			logger,
 			config.Server.MaxBodyBytes,
+			config.Server.DebugEvents,
+			installStore,
+			namespaceStore,
 		)
 		if err != nil {
 			logger.Fatalf("github handler: %v", err)
 		}
 		mux.Handle(config.Providers.GitHub.Path, ghHandler)
-		logger.Printf("github webhook enabled on %s", config.Providers.GitHub.Path)
+		logger.Printf(
+			"provider=github webhook=enabled path=%s oauth_callback=/oauth/github/callback app_id=%d",
+			config.Providers.GitHub.Path,
+			config.Providers.GitHub.AppID,
+		)
 	}
 
 	if config.Providers.GitLab.Enabled {
@@ -66,12 +136,17 @@ func main() {
 			publisher,
 			logger,
 			config.Server.MaxBodyBytes,
+			config.Server.DebugEvents,
+			namespaceStore,
 		)
 		if err != nil {
 			logger.Fatalf("gitlab handler: %v", err)
 		}
 		mux.Handle(config.Providers.GitLab.Path, glHandler)
-		logger.Printf("gitlab webhook enabled on %s", config.Providers.GitLab.Path)
+		logger.Printf(
+			"provider=gitlab webhook=enabled path=%s oauth_callback=/oauth/gitlab/callback",
+			config.Providers.GitLab.Path,
+		)
 	}
 
 	if config.Providers.Bitbucket.Enabled {
@@ -81,24 +156,42 @@ func main() {
 			publisher,
 			logger,
 			config.Server.MaxBodyBytes,
+			config.Server.DebugEvents,
+			namespaceStore,
 		)
 		if err != nil {
 			logger.Fatalf("bitbucket handler: %v", err)
 		}
 		mux.Handle(config.Providers.Bitbucket.Path, bbHandler)
-		logger.Printf("bitbucket webhook enabled on %s", config.Providers.Bitbucket.Path)
+		logger.Printf(
+			"provider=bitbucket webhook=enabled path=%s oauth_callback=/oauth/bitbucket/callback",
+			config.Providers.Bitbucket.Path,
+		)
 	}
 
-	if config.Server.MetricsEnabled {
-		mux.Handle(config.Server.MetricsPath, expvar.Handler())
+	redirectBase := config.OAuth.RedirectBaseURL
+	oauthHandler := func(provider string, cfg auth.ProviderConfig) *oauth.Handler {
+		return &oauth.Handler{
+			Provider:     provider,
+			Config:       cfg,
+			Providers:    config.Providers,
+			Store:        installStore,
+			NamespaceStore: namespaceStore,
+			Logger:       logger,
+			RedirectBase: redirectBase,
+			PublicBaseURL: config.Server.PublicBaseURL,
+		}
 	}
+	mux.Handle("/oauth/github/callback", oauthHandler("github", config.Providers.GitHub))
+	mux.Handle("/oauth/gitlab/callback", oauthHandler("gitlab", config.Providers.GitLab))
+	mux.Handle("/oauth/bitbucket/callback", oauthHandler("bitbucket", config.Providers.Bitbucket))
 
-	handler := http.Handler(mux)
-	if config.Server.RateLimitRPS > 0 {
-		handler = internal.NewRateLimitHandler(handler, config.Server.RateLimitRPS, config.Server.RateLimitBurst, 5*time.Minute)
-	}
+	handler := h2c.NewHandler(mux, &http2.Server{})
 
 	addr := ":" + strconv.Itoa(config.Server.Port)
+	if config.Server.PublicBaseURL != "" {
+		logger.Printf("server public_base_url=%s", config.Server.PublicBaseURL)
+	}
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           handler,

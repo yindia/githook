@@ -15,10 +15,7 @@ type Client = gl.Client
 // NewTokenClient returns a GitLab SDK client.
 func NewTokenClient(cfg auth.ProviderConfig, token string) (*Client, error) {
 	if token == "" {
-		token = cfg.Token
-	}
-	if token == "" {
-		return nil, errors.New("gitlab token is required")
+		return nil, errors.New("gitlab access token is required")
 	}
 	opts := []gl.ClientOptionFunc{}
 	if base := normalizeBaseURL(cfg.BaseURL); base != "" {

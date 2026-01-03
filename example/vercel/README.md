@@ -8,12 +8,18 @@ This example triggers Vercel deploy hooks for preview and production based on Gi
 - `VERCEL_PREVIEW_HOOK_URL` and `VERCEL_PRODUCTION_HOOK_URL` from your Vercel project
 - Optional SCM auth: `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY_PATH`
 - Replace `dummy-org/dummy-repo`, `dummy-preview-branch`, and `dummy-prod-branch` in `example/vercel/app.yaml`
+- Optional GitLab/Bitbucket: `GITLAB_WEBHOOK_SECRET`, `BITBUCKET_WEBHOOK_SECRET`
 
 ## Setup
 
 Create a deploy hook in Vercel:
 1. Project Settings → Git → Deploy Hooks
 2. Create two hooks (preview + production) and copy the URLs
+
+Start RabbitMQ:
+```sh
+docker compose -f example/vercel/docker-compose.yaml up -d
+```
 
 ## Run
 
@@ -43,3 +49,4 @@ Send an opened PR webhook (preview):
 ## Notes
 - The worker prints intent only (no deploy logic).
 - The rule file uses dummy repo/branch names so you must update them before running.
+- The config includes GitLab/Bitbucket provider stubs if you want to extend the same pattern.
