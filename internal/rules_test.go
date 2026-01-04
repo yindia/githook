@@ -6,8 +6,8 @@ import "testing"
 func TestRuleEngineEvaluate(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "action == \"opened\"", Emit: "pr.opened"},
-			{When: "action == \"closed\" && merged == true", Emit: "pr.merged"},
+			{When: "action == \"opened\"", Emit: EmitList{"pr.opened"}},
+			{When: "action == \"closed\" && merged == true", Emit: EmitList{"pr.merged"}},
 		},
 	}
 
@@ -35,7 +35,7 @@ func TestRuleEngineEvaluate(t *testing.T) {
 func TestRuleEngineEvaluateMissingField(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "missing == true", Emit: "never"},
+			{When: "missing == true", Emit: EmitList{"never"}},
 		},
 	}
 
@@ -60,7 +60,7 @@ func TestRuleEngineEvaluateMissingField(t *testing.T) {
 func TestRuleEngineWithDrivers(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "action == \"opened\"", Emit: "pr.opened", Drivers: []string{"amqp", "http"}},
+			{When: "action == \"opened\"", Emit: EmitList{"pr.opened"}, Drivers: []string{"amqp", "http"}},
 		},
 	}
 
@@ -88,7 +88,7 @@ func TestRuleEngineWithDrivers(t *testing.T) {
 func TestRuleEngineJSONPathDot(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "$.pull_request.draft == false", Emit: "pr.opened"},
+			{When: "$.pull_request.draft == false", Emit: EmitList{"pr.opened"}},
 		},
 	}
 
@@ -113,7 +113,7 @@ func TestRuleEngineJSONPathDot(t *testing.T) {
 func TestRuleEngineJSONPathIndex(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "$.pull_request[0].draft == false", Emit: "pr.opened"},
+			{When: "$.pull_request[0].draft == false", Emit: EmitList{"pr.opened"}},
 		},
 	}
 
@@ -138,7 +138,7 @@ func TestRuleEngineJSONPathIndex(t *testing.T) {
 func TestRuleEngineJSONPathFilter(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "$.pull_request[0].draft == false", Emit: "pr.opened"},
+			{When: "$.pull_request[0].draft == false", Emit: EmitList{"pr.opened"}},
 		},
 	}
 
@@ -163,8 +163,8 @@ func TestRuleEngineJSONPathFilter(t *testing.T) {
 func TestRuleEngineBareJSONPath(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "action == \"opened\" && pull_request.draft == false", Emit: "pr.opened"},
-			{When: "pull_requests[0].draft == false", Emit: "pr.any"},
+			{When: "action == \"opened\" && pull_request.draft == false", Emit: EmitList{"pr.opened"}},
+			{When: "pull_requests[0].draft == false", Emit: EmitList{"pr.any"}},
 		},
 	}
 
@@ -189,7 +189,7 @@ func TestRuleEngineBareJSONPath(t *testing.T) {
 func TestRuleEngineStrictMissing(t *testing.T) {
 	cfg := RulesConfig{
 		Rules: []Rule{
-			{When: "missing_field == true", Emit: "never"},
+			{When: "missing_field == true", Emit: EmitList{"never"}},
 		},
 		Strict: true,
 	}
@@ -208,5 +208,30 @@ func TestRuleEngineStrictMissing(t *testing.T) {
 	matches := engine.Evaluate(event)
 	if len(matches) != 0 {
 		t.Fatalf("expected no matches in strict mode, got %d", len(matches))
+	}
+}
+
+func TestRuleEngineFunctions(t *testing.T) {
+	cfg := RulesConfig{
+		Rules: []Rule{
+			{When: `contains(labels, "bug")`, Emit: EmitList{"label.bug"}},
+			{When: `like(ref, "refs/heads/%")`, Emit: EmitList{"branch.push"}},
+		},
+	}
+
+	engine, err := NewRuleEngine(cfg)
+	if err != nil {
+		t.Fatalf("new rule engine: %v", err)
+	}
+
+	event := Event{
+		Provider:   "github",
+		Name:       "push",
+		RawPayload: []byte(`{"labels":["bug","ui"],"ref":"refs/heads/main"}`),
+	}
+
+	matches := engine.Evaluate(event)
+	if len(matches) != 2 {
+		t.Fatalf("expected 2 matches, got %d", len(matches))
 	}
 }

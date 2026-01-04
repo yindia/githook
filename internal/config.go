@@ -268,8 +268,8 @@ func normalizeRules(rules []Rule) ([]Rule, error) {
 	for i := range rules {
 		rule := rules[i]
 		rule.When = strings.TrimSpace(rule.When)
-		rule.Emit = strings.TrimSpace(rule.Emit)
-		if rule.When == "" || rule.Emit == "" {
+		rule.Emit = EmitList(rule.Emit.Values())
+		if rule.When == "" || len(rule.Emit) == 0 {
 			return nil, fmt.Errorf("rule %d is missing when or emit", i)
 		}
 		if len(rule.Drivers) > 0 {

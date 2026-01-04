@@ -75,7 +75,24 @@ func TestLoadConfigTrimsFields(t *testing.T) {
 	if cfg.Rules[0].When != "action == \"opened\"" {
 		t.Fatalf("expected trimmed when, got %q", cfg.Rules[0].When)
 	}
-	if cfg.Rules[0].Emit != "pr.opened.ready" {
-		t.Fatalf("expected trimmed emit, got %q", cfg.Rules[0].Emit)
+	if len(cfg.Rules[0].Emit) != 1 || cfg.Rules[0].Emit[0] != "pr.opened.ready" {
+		t.Fatalf("expected trimmed emit, got %v", cfg.Rules[0].Emit)
+	}
+}
+
+func TestLoadConfigEmitList(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	content := "rules:\n  - when: action == \"opened\"\n    emit: [\"pr.opened\", \"audit.pr.opened\"]\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write rules config: %v", err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("load rules config: %v", err)
+	}
+	if len(cfg.Rules[0].Emit) != 2 {
+		t.Fatalf("expected 2 emits, got %v", cfg.Rules[0].Emit)
 	}
 }

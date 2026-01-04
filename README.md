@@ -270,12 +270,18 @@ rules:
   - when: action == "closed" && pull_request.merged == true
     emit: pr.merged
     drivers: [amqp, http]
+
+  # Fan-out to multiple topics
+  - when: action == "closed" && pull_request.merged == true
+    emit: [pr.merged, audit.pr.merged]
 ```
 
 -   **`when`**: A boolean expression evaluated against the webhook payload.
     -   Bare identifiers (e.g., `action`) are treated as JSONPath `$.action`.
     -   You can use full JSONPath syntax (e.g., `$.pull_request.head.ref`).
+    -   Helper functions: `contains(value, needle)` and `like(value, pattern)` (`%` wildcard).
 -   **`emit`**: The topic name to publish the event to if the `when` condition is true.
+-   **`emit`** can also be a list to publish to multiple topics.
 -   **`drivers`**: (Optional) A list of specific drivers to publish this event to. If omitted, the default `driver` or `drivers` from the Watermill config are used.
 
 ## Worker SDK

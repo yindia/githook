@@ -2,11 +2,15 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/Knetic/govaluate"
 	"github.com/PaesslerAG/jsonpath"
+	"gopkg.in/yaml.v3"
 )
 
 // Rule defines a condition and an action to take when the condition is met.
@@ -14,7 +18,7 @@ type Rule struct {
 	// When is a govaluate expression that is evaluated against the event data.
 	When string `yaml:"when"`
 	// Emit is the topic to publish the event to if the 'When' expression is true.
-	Emit string `yaml:"emit"`
+	Emit EmitList `yaml:"emit"`
 	// Drivers is a list of publisher drivers to use for this rule.
 	// If empty, the default drivers are used.
 	Drivers []string `yaml:"drivers"`
@@ -22,7 +26,7 @@ type Rule struct {
 
 // compiledRule is a pre-processed version of a Rule.
 type compiledRule struct {
-	emit    string
+	emit    []string
 	drivers []string
 	vars    []string
 	varMap  map[string]string
@@ -52,12 +56,12 @@ func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
 	rules := make([]compiledRule, 0, len(cfg.Rules))
 	for _, rule := range cfg.Rules {
 		rewritten, varMap := rewriteExpression(rule.When)
-		expr, err := govaluate.NewEvaluableExpression(rewritten)
+		expr, err := govaluate.NewEvaluableExpressionWithFunctions(rewritten, ruleFunctions())
 		if err != nil {
 			return nil, err
 		}
 		rules = append(rules, compiledRule{
-			emit:    rule.Emit,
+			emit:    rule.Emit.Values(),
 			drivers: rule.Drivers,
 			vars:    expr.Vars(),
 			varMap:  varMap,
@@ -66,6 +70,136 @@ func NewRuleEngine(cfg RulesConfig) (*RuleEngine, error) {
 	}
 
 	return &RuleEngine{rules: rules, strict: cfg.Strict, logger: logger}, nil
+}
+
+// EmitList supports either a string or list of strings in YAML.
+type EmitList []string
+
+func (e *EmitList) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.Scalar:
+		if value.Value == "" {
+			*e = nil
+			return nil
+		}
+		*e = EmitList{value.Value}
+		return nil
+	case yaml.SequenceNode:
+		out := make([]string, 0, len(value.Content))
+		for _, item := range value.Content {
+			if item.Kind != yaml.Scalar {
+				return fmt.Errorf("emit items must be strings")
+			}
+			out = append(out, item.Value)
+		}
+		*e = EmitList(out)
+		return nil
+	default:
+		return fmt.Errorf("emit must be a string or list of strings")
+	}
+}
+
+func (e EmitList) Values() []string {
+	out := make([]string, 0, len(e))
+	for _, val := range e {
+		trimmed := strings.TrimSpace(val)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+func ruleFunctions() map[string]govaluate.ExpressionFunction {
+	return map[string]govaluate.ExpressionFunction{
+		"contains": containsFunc,
+		"like":     likeFunc,
+	}
+}
+
+func containsFunc(args ...interface{}) (interface{}, error) {
+	if len(args) != 2 {
+		return nil, fmt.Errorf("contains expects 2 args")
+	}
+	if args[0] == nil || args[1] == nil {
+		return false, nil
+	}
+	switch hay := args[0].(type) {
+	case string:
+		needle, ok := args[1].(string)
+		if !ok {
+			return false, nil
+		}
+		return strings.Contains(hay, needle), nil
+	case []interface{}:
+		return sliceContains(hay, args[1]), nil
+	case []string:
+		needle, ok := args[1].(string)
+		if !ok {
+			return false, nil
+		}
+		for _, item := range hay {
+			if item == needle {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+	return reflectContains(args[0], args[1]), nil
+}
+
+func sliceContains(values []interface{}, needle interface{}) bool {
+	for _, item := range values {
+		if reflect.DeepEqual(item, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func reflectContains(hay interface{}, needle interface{}) bool {
+	value := reflect.ValueOf(hay)
+	switch value.Kind() {
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < value.Len(); i++ {
+			if reflect.DeepEqual(value.Index(i).Interface(), needle) {
+				return true
+			}
+		}
+	case reflect.Map:
+		key := reflect.ValueOf(needle)
+		if key.IsValid() {
+			return value.MapIndex(key).IsValid()
+		}
+	}
+	return false
+}
+
+func likeFunc(args ...interface{}) (interface{}, error) {
+	if len(args) != 2 {
+		return nil, fmt.Errorf("like expects 2 args")
+	}
+	left, ok := args[0].(string)
+	if !ok {
+		return false, nil
+	}
+	pattern, ok := args[1].(string)
+	if !ok {
+		return false, nil
+	}
+	regex := likePatternToRegex(pattern)
+	matched, err := regexp.MatchString(regex, left)
+	if err != nil {
+		return false, err
+	}
+	return matched, nil
+}
+
+func likePatternToRegex(pattern string) string {
+	escaped := regexp.QuoteMeta(pattern)
+	escaped = strings.ReplaceAll(escaped, "%", ".*")
+	escaped = strings.ReplaceAll(escaped, "_", ".")
+	return "^" + escaped + "$"
 }
 
 // Evaluate runs an event through the rule engine and returns a list of topics to publish to.
@@ -100,7 +234,9 @@ func (r *RuleEngine) evaluateWithLogger(event Event, logger *log.Logger) []RuleM
 		}
 		ok, _ := result.(bool)
 		if ok {
-			matches = append(matches, RuleMatch{Topic: rule.emit, Drivers: rule.drivers})
+			for _, topic := range rule.emit {
+				matches = append(matches, RuleMatch{Topic: topic, Drivers: rule.drivers})
+			}
 		}
 	}
 	return matches
